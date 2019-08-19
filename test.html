@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<body>
+  <textarea id="input" rows="20" cols="80">
+    #include &lt;stdio.h&gt;
+    int main() {
+      printf("Hello, World!\n");
+   }
+  </textarea>
+  <button id="run">run</button>
+
+  <script src="web.js"></script>
+  <script>
+    const cache = {};
+
+    async function getModule(name) {
+      if (cache[name]) return cache[name];
+      const buffer = await readBuffer(name);
+      const module = await WebAssembly.compile(buffer);
+      console.log(`Done compiling ${name}.`);
+      cache[name] = module;
+      return module;
+    }
+
+    const memfs = new MemFS();
+    const ready = memfs.ready.then(async () => {
+      const tar = new Tar(await readBuffer('sysroot.tar'));
+      tar.untar(memfs);
+      console.log('Done untarring sysroot.');
+    });
+
+    async function compile(input, contents, obj) {
+      await ready;
+      memfs.addFile(input, contents);
+      await run(getModule('clang'),
+        'clang', '-cc1', '-emit-obj',
+        '-disable-free',
+        '-isysroot', '/',
+        '-internal-isystem', '/include/c++/v1',
+        '-internal-isystem', '/include',
+        '-internal-isystem', '/lib/clang/8.0.1/include',
+        '-O2',
+        '-ferror-limit', '19', '-fmessage-length', '80',
+        '-o', obj, '-x', 'c++', input);
+    }
+
+    async function link(obj, wasm) {
+      const libdir = 'lib/wasm32-wasi';
+      const crt1 = `${libdir}/crt1.o`;
+      await ready;
+      await run(getModule('lld'),
+        'wasm-ld', '--no-threads', `-L${libdir}`, crt1, obj,
+        '-lc', '-lc++', '-lc++abi', '-o', wasm)
+    }
+
+    async function run(module, ...args) {
+      const app = new App(module, memfs, ...args);
+      await app.run();
+    }
+
+    const inputEl = document.getElementById('input');
+    const runEl = document.getElementById('run');
+
+    let count = 0;
+    runEl.addEventListener('click', async () => {
+      const input = `${count}.cc`;
+      const obj = `${count}.o`;
+      const wasm = `${count}.wasm`;
+      ++count;
+      const contents = inputEl.value;
+      await compile(input, contents, obj);
+      await link(obj, wasm);
+
+      const testMod = WebAssembly.compile(memfs.getFileContents(wasm));
+      await run(testMod, 'test');
+    });
+  </script>
+</body>
