@@ -1,3 +1,28 @@
+/// UI stuff
+Split(['#input', '#output']);
+
+const $ = document.querySelector.bind(document);
+const editor = ace.edit('input');
+
+editor.session.setMode('ace/mode/c_cpp');
+editor.setKeyboardHandler('ace/keyboard/vim');
+editor.setOption('fontSize', 20);
+
+editor.commands.addCommand({
+  name: 'run',
+  bindKey: {win: 'Ctrl+Enter'},
+  exec: editor => { build(); }
+});
+
+Terminal.applyAddon(fit);
+
+const term = new Terminal({convertEol: true, disableStdin: true, fontSize: 20});
+term.open($('#output'));
+
+term.fit(); // TODO call this on resize
+
+
+/// Compile stuff
 class ProcExit {
   constructor(code) {
     this.code = code;
@@ -113,14 +138,15 @@ class HostWriteBuffer {
       if (newline === -1) {
         break;
       }
-      console.log(this.buffer.slice(0, newline));
+      term.write(this.buffer.slice(0, newline + 1));
       this.buffer = this.buffer.slice(newline + 1);
     }
   }
 
   flush() {
     if (this.buffer.length > 0) {
-      console.log(this.buffer);
+      term.write(this.buffer + '\n');
+      this.buffer = '';
     }
   }
 }
@@ -401,4 +427,66 @@ class Tar {
       }
     }
   }
+}
+
+const cache = {};
+
+async function getModule(name) {
+  if (cache[name]) return cache[name];
+  const buffer = await readBuffer(name);
+  const module = await WebAssembly.compile(buffer);
+  console.log(`Done compiling ${name}.`);
+  cache[name] = module;
+  return module;
+}
+
+const memfs = new MemFS();
+const ready = memfs.ready.then(async () => {
+  const tar = new Tar(await readBuffer('sysroot.tar'));
+  tar.untar(memfs);
+  console.log('Done untarring sysroot.');
+});
+
+async function compile(input, contents, obj) {
+  await ready;
+  memfs.addFile(input, contents);
+  await run(getModule('clang'),
+    'clang', '-cc1', '-emit-obj',
+    '-disable-free',
+    '-isysroot', '/',
+    '-internal-isystem', '/include/c++/v1',
+    '-internal-isystem', '/include',
+    '-internal-isystem', '/lib/clang/8.0.1/include',
+    '-O2',
+    '-ferror-limit', '19', '-fmessage-length', '80', '-fcolor-diagnostics',
+    '-o', obj, '-x', 'c++', input);
+}
+
+async function link(obj, wasm) {
+  const libdir = 'lib/wasm32-wasi';
+  const crt1 = `${libdir}/crt1.o`;
+  await ready;
+  await run(getModule('lld'),
+    'wasm-ld', '--no-threads', `-L${libdir}`, crt1, obj,
+    '-lc', '-lc++', '-lc++abi', '-o', wasm)
+}
+
+async function run(module, ...args) {
+  const app = new App(module, memfs, ...args);
+  await app.run();
+}
+
+let count = 0;
+async function build() {
+  const input = `${count}.cc`;
+  const obj = `${count}.o`;
+  const wasm = `${count}.wasm`;
+  ++count;
+  const contents = editor.getValue();
+  await compile(input, contents, obj);
+  await link(obj, wasm);
+
+  const testMod = WebAssembly.compile(memfs.getFileContents(wasm));
+  await run(testMod, 'test');
+  memfs.hostFlush();
 }
