@@ -10,7 +10,7 @@ editor.setOption('fontSize', 20);
 
 editor.commands.addCommand({
   name: 'run',
-  bindKey: {win: 'Ctrl+Enter'},
+  bindKey: {win: 'Ctrl+Enter', mac: 'Command+Enter'},
   exec: editor => { build(); }
 });
 
