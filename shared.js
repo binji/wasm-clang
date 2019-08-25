@@ -463,6 +463,18 @@ class API {
                    '-x', 'c++', input);
   }
 
+  async compileToAssembly(input, contents) {
+    await this.ready;
+    this.memfs.addFile(input, contents);
+    const clang = await this.getModule(this.clangFilename);
+    await this.run(clang, 'clang', '-cc1', '-S', '-triple=x86_64', '-mllvm',
+                   '--x86-asm-syntax=intel', '-disable-free', '-isysroot', '/',
+                   '-internal-isystem', '/include/c++/v1', '-internal-isystem',
+                   '/include', '-internal-isystem', '/lib/clang/8.0.1/include',
+                   '-O2', '-ferror-limit', '19', '-fmessage-length', '80',
+                   '-fcolor-diagnostics', '-o', '-', '-x', 'c++', input);
+  }
+
   async link(obj, wasm) {
     const libdir = 'lib/wasm32-wasi';
     const crt1 = `${libdir}/crt1.o`;
