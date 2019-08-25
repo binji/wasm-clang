@@ -11,7 +11,7 @@ editor.setOption('fontSize', 20);
 editor.commands.addCommand({
   name: 'run',
   bindKey: {win: 'Ctrl+Enter', mac: 'Command+Enter'},
-  exec: editor => { compileLinkRun(editor.getValue()); }
+  exec: editor => { api.compileLinkRun(editor.getValue()); }
 });
 
 Terminal.applyAddon(fit);
@@ -23,18 +23,11 @@ term.fit(); // TODO call this on resize
 
 
 /// Compile stuff
-async function readBuffer(filename) {
-  const response = await fetch(filename);
-  return response.arrayBuffer();
-}
+const api = new API({
+  async readBuffer(filename) {
+    const response = await fetch(filename);
+    return response.arrayBuffer();
+  },
 
-function hostWrite(s) {
-  term.write(s);
-}
-
-const memfs = new MemFS(hostWrite);
-const ready = memfs.ready.then(async () => {
-  const tar = new Tar(await readBuffer('sysroot.tar'));
-  tar.untar(memfs);
-  console.log('Done untarring sysroot.');
+  hostWrite(s) { term.write(s); }
 });

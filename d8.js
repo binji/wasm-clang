@@ -1,12 +1,9 @@
 load('shared.js');
 
-async function readBuffer(filename) {
-  return readbuffer(filename);
-}
-
-function hostWrite(s) {
-  console.log(s);
-}
+const api = new API({
+  async readBuffer(name) { return readbuffer(name); },
+  hostWrite(s) { console.log(s); }
+});
 
 const contents = `
 #include <stdio.h>
@@ -21,17 +18,10 @@ int main() {
 }
 `;
 
-const memfs = new MemFS(hostWrite);
-const ready = memfs.ready.then(async () => {
-  const tar = new Tar(await readBuffer('sysroot.tar'));
-  tar.untar(memfs);
-  console.log('Done untarring sysroot.');
-});
-
 (async function() {
   testRunner.waitUntilDone();
   try {
-    await compileLinkRun(contents);
+    await api.compileLinkRun(contents);
   } catch (e) {
     console.log(e.stack);
   } finally {

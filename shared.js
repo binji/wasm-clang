@@ -1,3 +1,5 @@
+const API = (function() {
+
 class ProcExit {
   constructor(code) {
     this.code = code;
@@ -97,9 +99,9 @@ class Memory {
 };
 
 class HostWriteBuffer {
-  constructor(write) {
+  constructor(hostWrite) {
     this.buffer = '';
-    this.write = write;
+    this.hostWrite = hostWrite;
   }
 
   write(str) {
@@ -109,29 +111,33 @@ class HostWriteBuffer {
       if (newline === -1) {
         break;
       }
-      this.write(this.buffer.slice(0, newline + 1));
+      this.hostWrite(this.buffer.slice(0, newline + 1));
       this.buffer = this.buffer.slice(newline + 1);
     }
   }
 
   flush() {
     if (this.buffer.length > 0) {
-      this.write(this.buffer + '\n');
+      this.hostWrite(this.buffer + '\n');
       this.buffer = '';
     }
   }
 }
 
 class MemFS {
-  constructor(hostWrite) {
-    this.hostWriteBuffer = new HostWriteBuffer(hostWrite);
+  constructor(options) {
+    this.readBuffer = options.readBuffer;
+    this.hostWrite = options.hostWrite;
+    this.memfsFilename = options.memfsFilename;
+
+    this.hostWriteBuffer = new HostWriteBuffer(this.hostWrite);
     this.hostMem_ = null;  // Set later when wired up to application.
 
     // Imports for memfs module.
     const env = getImportObject(
         this, [ 'abort', 'host_write', 'memfs_log', 'copy_in', 'copy_out' ]);
 
-    this.ready = readBuffer('memfs')
+    this.ready = this.readBuffer(this.memfsFilename)
                      .then(buffer => WebAssembly.compile(buffer))
                      .then(module => WebAssembly.instantiate(module, {env}))
                      .then(instance => {
@@ -226,8 +232,6 @@ class App {
     this.environ = {USER : 'alice'};
     this.memfs = memfs;
 
-    console.log(`>>> running \"${this.argv.join(' ')}\"`);
-
     const wasi_unstable = getImportObject(this, [
       'proc_exit', 'environ_sizes_get', 'environ_get', 'args_sizes_get',
       'args_get', 'random_get', 'clock_time_get', 'poll_oneoff'
@@ -236,13 +240,12 @@ class App {
     // Fill in some WASI implementations from memfs.
     Object.assign(wasi_unstable, this.memfs.exports);
 
-    this.ready =
-        module.then(mod => getInstance(mod, {wasi_unstable})).then(instance => {
-          this.instance = instance;
-          this.exports = this.instance.exports;
-          this.mem = new Memory(this.exports.memory);
-          this.memfs.hostMem = this.mem;
-        });
+    this.ready = getInstance(module, {wasi_unstable}).then(instance => {
+      this.instance = instance;
+      this.exports = this.instance.exports;
+      this.mem = new Memory(this.exports.memory);
+      this.memfs.hostMem = this.mem;
+    });
   }
 
   async run() {
@@ -399,57 +402,97 @@ class Tar {
   }
 }
 
-async function getModule(name) {
-  if (getModule.cache[name]) return getModule.cache[name];
-  const buffer = await readBuffer(name);
-  const module = await WebAssembly.compile(buffer);
-  console.log(`Done compiling ${name}.`);
-  getModule.cache[name] = module;
-  return module;
+class API {
+  constructor(options) {
+    this.moduleCache = {};
+    this.readBuffer = options.readBuffer;
+    this.hostWrite = options.hostWrite;
+    this.clangFilename = options.clang || 'clang';
+    this.lldFilename = options.lld || 'lld';
+    this.sysrootFilename = options.sysroot || 'sysroot.tar';
+
+    this.memfs = new MemFS({
+      readBuffer : this.readBuffer,
+      hostWrite : this.hostWrite,
+      memfsFilename : options.memfs || 'memfs',
+    });
+    this.ready = this.memfs.ready.then(
+        () => { return this.untar(this.memfs, this.sysrootFilename); });
+  }
+
+  hostLog(message) {
+    const yellowArrow = '\x1b[1;93m>\x1b[0m ';
+    this.hostWrite(`${yellowArrow}${message}`);
+  }
+
+  async hostLogAsync(message, promise) {
+    this.hostLog(`${message}...`);
+    const result = await promise;
+    this.hostWrite(' done.\n');
+    return result;
+  }
+
+  async getModule(name) {
+    if (this.moduleCache[name]) return this.moduleCache[name];
+    const buffer =
+        await this.hostLogAsync(`Fetching ${name}`, this.readBuffer(name));
+    const module = await this.hostLogAsync(`Compiling ${name}`,
+                                           WebAssembly.compile(buffer));
+    this.moduleCache[name] = module;
+    return module;
+  }
+
+  async untar(memfs, filename) {
+    await this.memfs.ready;
+    const promise = (async () => {
+      const tar = new Tar(await this.readBuffer(filename));
+      tar.untar(this.memfs);
+    })();
+    await this.hostLogAsync(`Untarring ${filename}`, promise);
+  }
+
+  async compile(input, contents, obj) {
+    await this.ready;
+    this.memfs.addFile(input, contents);
+    const clang = await this.getModule(this.clangFilename);
+    await this.run(clang, 'clang', '-cc1', '-emit-obj', '-disable-free',
+                   '-isysroot', '/', '-internal-isystem', '/include/c++/v1',
+                   '-internal-isystem', '/include', '-internal-isystem',
+                   '/lib/clang/8.0.1/include', '-O2', '-ferror-limit', '19',
+                   '-fmessage-length', '80', '-fcolor-diagnostics', '-o', obj,
+                   '-x', 'c++', input);
+  }
+
+  async link(obj, wasm) {
+    const libdir = 'lib/wasm32-wasi';
+    const crt1 = `${libdir}/crt1.o`;
+    await this.ready;
+    const lld = await this.getModule(this.lldFilename);
+    await this.run(lld, 'wasm-ld', '--no-threads', `-L${libdir}`, crt1, obj,
+                   '-lc', '-lc++', '-lc++abi', '-o', wasm)
+  }
+
+  async run(module, ...args) {
+    this.hostLog(`${args.join(' ')}\n`);
+    const app = new App(module, this.memfs, ...args);
+    await app.run();
+  }
+
+  async compileLinkRun(contents) {
+    const input = `test.cc`;
+    const obj = `test.o`;
+    const wasm = `test.wasm`;
+    await this.compile(input, contents, obj);
+    await this.link(obj, wasm);
+
+    const buffer = this.memfs.getFileContents(wasm);
+    const testMod = await this.hostLogAsync(`Compiling ${wasm}`,
+                                            WebAssembly.compile(buffer));
+    await this.run(testMod, wasm);
+    this.memfs.hostFlush();
+  }
 }
 
-getModule.cache = {};
+return API;
 
-async function compile(input, contents, obj) {
-  await ready;
-  memfs.addFile(input, contents);
-  await run(getModule('clang'),
-    'clang', '-cc1', '-emit-obj',
-    '-disable-free',
-    '-isysroot', '/',
-    '-internal-isystem', '/include/c++/v1',
-    '-internal-isystem', '/include',
-    '-internal-isystem', '/lib/clang/8.0.1/include',
-    '-O2',
-    '-ferror-limit', '19', '-fmessage-length', '80', '-fcolor-diagnostics',
-    '-o', obj, '-x', 'c++', input);
-}
-
-async function link(obj, wasm) {
-  const libdir = 'lib/wasm32-wasi';
-  const crt1 = `${libdir}/crt1.o`;
-  await ready;
-  await run(getModule('lld'),
-    'wasm-ld', '--no-threads', `-L${libdir}`, crt1, obj,
-    '-lc', '-lc++', '-lc++abi', '-o', wasm)
-}
-
-async function run(module, ...args) {
-  const app = new App(module, memfs, ...args);
-  await app.run();
-}
-
-async function compileLinkRun(contents) {
-  const count = compileLinkRun.count;
-  const input = `${count}.cc`;
-  const obj = `${count}.o`;
-  const wasm = `${count}.wasm`;
-  ++compileLinkRun.count;
-  await compile(input, contents, obj);
-  await link(obj, wasm);
-
-  const testMod = WebAssembly.compile(memfs.getFileContents(wasm));
-  await run(testMod, 'test');
-  memfs.hostFlush();
-}
-compileLinkRun.count = 0;
+})();
