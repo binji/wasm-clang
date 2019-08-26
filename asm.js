@@ -1,6 +1,4 @@
 /// UI stuff
-Split(['#input', '#output']);
-
 function debounce(f, wait) {
   let lastTime = 0;
   let timeoutId = -1;
@@ -36,13 +34,25 @@ editor.setOption('fontSize', 20);
 
 editor.session.on('change', debounce(compileToAssembly, 100));
 
+editor.setValue(`int fac(int n) {
+    if (n < 1) return 1;
+    return n * fac(n - 1);
+}`);
+editor.clearSelection();
+
 Terminal.applyAddon(fit);
 
 const term = new Terminal({convertEol: true, disableStdin: true, fontSize: 20});
 term.open($('#output'));
+term.fit();
 
-term.fit(); // TODO call this on resize
-
+Split({
+  rowGutters: [{track: 1, element: $('.gutter')}],
+  onDrag: () => {
+    term.fit();
+    editor.resize();
+  }
+});
 
 const api = new API({
   async readBuffer(filename) {

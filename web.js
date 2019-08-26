@@ -1,7 +1,6 @@
 /// UI stuff
-Split(['#input', '#output']);
-
 const $ = document.querySelector.bind(document);
+
 const editor = ace.edit('input');
 
 editor.session.setMode('ace/mode/c_cpp');
@@ -14,12 +13,32 @@ editor.commands.addCommand({
   exec: editor => { api.compileLinkRun(editor.getValue()); }
 });
 
-Terminal.applyAddon(fit);
+editor.setValue(`#include <stdio.h>
+int fac(int n) {
+    if (n < 1) return 1;
+    return n * fac(n - 1);
+}
 
+int main() {
+    for (int i = 1; i <= 10; ++i) {
+        printf("fac(%d) = %d\\n", i, fac(i));
+    }
+}`);
+editor.clearSelection();
+
+
+Terminal.applyAddon(fit);
 const term = new Terminal({convertEol: true, disableStdin: true, fontSize: 20});
 term.open($('#output'));
+term.fit();
 
-term.fit(); // TODO call this on resize
+Split({
+  rowGutters: [{track: 1, element: $('.gutter')}],
+  onDrag: () => {
+    term.fit();
+    editor.resize();
+  }
+});
 
 
 /// Compile stuff
