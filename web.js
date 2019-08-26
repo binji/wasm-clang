@@ -10,7 +10,7 @@ editor.setOption('fontSize', 20);
 editor.commands.addCommand({
   name: 'run',
   bindKey: {win: 'Ctrl+Enter', mac: 'Command+Enter'},
-  exec: editor => { api.compileLinkRun(editor.getValue()); }
+  exec: debounceLazy(editor => api.compileLinkRun(editor.getValue()), 100)
 });
 
 editor.setValue(`#include <stdio.h>
@@ -34,10 +34,10 @@ term.fit();
 
 Split({
   rowGutters: [{track: 1, element: $('.gutter')}],
-  onDrag: () => {
+  onDrag: debounceLazy(() => {
     term.fit();
     editor.resize();
-  }
+  }, 10)
 });
 
 
