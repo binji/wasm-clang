@@ -2,6 +2,9 @@ load('shared.js');
 
 const api = new API({
   async readBuffer(name) { return readbuffer(name); },
+  async compileStreaming(name) {
+    return WebAssembly.compile(readbuffer(name));
+  },
   hostWrite(s) { console.log(s); }
 });
 

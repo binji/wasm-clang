@@ -154,7 +154,7 @@ class HostWriteBuffer {
 
 class MemFS {
   constructor(options) {
-    this.readBuffer = options.readBuffer;
+    const compileStreaming = options.compileStreaming;
     this.hostWrite = options.hostWrite;
     this.memfsFilename = options.memfsFilename;
 
@@ -165,8 +165,7 @@ class MemFS {
     const env = getImportObject(
         this, [ 'abort', 'host_write', 'memfs_log', 'copy_in', 'copy_out' ]);
 
-    this.ready = this.readBuffer(this.memfsFilename)
-                     .then(buffer => WebAssembly.compile(buffer))
+    this.ready = compileStreaming(this.memfsFilename)
                      .then(module => WebAssembly.instantiate(module, {env}))
                      .then(instance => {
                        this.instance = instance;
@@ -434,13 +433,14 @@ class API {
   constructor(options) {
     this.moduleCache = {};
     this.readBuffer = options.readBuffer;
+    this.compileStreaming = options.compileStreaming;
     this.hostWrite = options.hostWrite;
     this.clangFilename = options.clang || 'clang';
     this.lldFilename = options.lld || 'lld';
     this.sysrootFilename = options.sysroot || 'sysroot.tar';
 
     this.memfs = new MemFS({
-      readBuffer : this.readBuffer,
+      compileStreaming : this.compileStreaming,
       hostWrite : this.hostWrite,
       memfsFilename : options.memfs || 'memfs',
     });
@@ -462,10 +462,8 @@ class API {
 
   async getModule(name) {
     if (this.moduleCache[name]) return this.moduleCache[name];
-    const buffer =
-        await this.hostLogAsync(`Fetching ${name}`, this.readBuffer(name));
-    const module = await this.hostLogAsync(`Compiling ${name}`,
-                                           WebAssembly.compile(buffer));
+    const module = await this.hostLogAsync(`Fetching and compiling ${name}`,
+                                           this.compileStreaming(name));
     this.moduleCache[name] = module;
     return module;
   }

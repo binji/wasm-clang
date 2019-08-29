@@ -1,57 +1,32 @@
 <!DOCTYPE html>
 <head>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/xterm.min.css" />
-<meta name="viewport" content="width=480">
-<style>
-  * {
-    box-sizing: border-box;
-  }
-  #all {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: grid;
-    grid-template-rows: auto 2fr 10px 1fr;
-  }
-  #toolbar {
-    border-bottom: 1px solid;
-  }
-  .item {
-    min-height: 100px;
-  }
-  .gutter {
-    background-color: #eee;
-    background-repeat: no-repeat;
-    background-position: 50%;
-  }
-  .gutter.hgutter {
-    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
-    cursor: col-resize;
-  }
-  .gutter.vgutter {
-    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAFAQMAAABo7865AAAABlBMVEVHcEzMzMzyAv2sAAAAAXRSTlMAQObYZgAAABBJREFUeF5jOAMEEAIEEFwAn3kMwcB6I2AAAAAASUVORK5CYII=');
-    cursor: row-resize;
-  }
-</style>
+<meta name="viewport" content="width=480"/>
+<link rel="stylesheet" href="main.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/xterm.min.css"/>
 </head>
 <body>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.5/ace.js"></script>
   <script src="split-grid.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/xterm.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/addons/fit/fit.min.js"></script>
-  <div id="all">
+  <div id="all" class="horiz">
     <div id="toolbar">
       <button id="run">run</button>
-      <button id="vim">vim</button>
-      <button id="emacs">emacs</button>
-      <button id="sublime">sublime</button>
+      <select id="keyboard">
+        <option value="vim">vim</option>
+        <option value="emacs">emacs</option>
+        <option value="sublime">sublime</option>
+      </select>
+      <select id="split">
+        <option value="horiz">horizontal</option>
+        <option value="vert">vertical</option>
+      </select>
     </div>
     <div id="input" class="item"></div>
-    <div class="gutter vgutter"></div>
+    <div class="gutter"></div>
     <div id="output" class="item"></div>
   </div>
   <script src="shared.js"></script>
+  <script src="shared_web.js"></script>
   <script src="web.js"></script>
 </body>
