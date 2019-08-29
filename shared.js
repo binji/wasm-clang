@@ -517,12 +517,15 @@ class API {
   }
 
   async link(obj, wasm) {
+    const stackSize = 262144;
+
     const libdir = 'lib/wasm32-wasi';
     const crt1 = `${libdir}/crt1.o`;
     await this.ready;
     const lld = await this.getModule(this.lldFilename);
-    await this.run(lld, 'wasm-ld', '--no-threads', `-L${libdir}`, crt1, obj,
-                   '-lc', '-lc++', '-lc++abi', '-o', wasm)
+    await this.run(lld, 'wasm-ld', '--no-threads', '-z',
+                   `stack-size=${stackSize}`, `-L${libdir}`, crt1, obj, '-lc',
+                   '-lc++', '-lc++abi', '-o', wasm)
   }
 
   async run(module, ...args) {
