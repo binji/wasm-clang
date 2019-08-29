@@ -52,23 +52,37 @@ function setSplit(direction) {
 }
 setSplit('horiz');
 
-/// Compile stuff
-const api = new API({
-  async readBuffer(filename) {
-    const response = await fetch(filename);
-    return response.arrayBuffer();
-  },
+class WorkerAPI {
+  constructor() {
+    this.worker = new Worker('worker.js');
+    const channel = new MessageChannel();
+    this.port = channel.port1;
+    this.port.onmessage = this.onmessage.bind(this);
 
-  async compileStreaming(filename) {
-    // TODO: make compileStreaming work. It needs the server to use the
-    // application/wasm mimetype.
-    if (false && WebAssembly.compileStreaming) {
-      return WebAssembly.compileStreaming(fetch(filename));
-    } else {
-      const response = await fetch(filename);
-      return WebAssembly.compile(await response.arrayBuffer());
+    const remotePort = channel.port2;
+    this.worker.postMessage({id: 'constructor', data: remotePort},
+                            [remotePort]);
+  }
+
+  terminate() {
+    this.worker.terminate();
+  }
+
+  compileToAssembly(options) {
+    this.port.postMessage({id: 'compileToAssembly', data: options});
+  }
+
+  compileLinkRun(contents) {
+    this.port.postMessage({id: 'compileLinkRun', data: contents});
+  }
+
+  onmessage(event) {
+    switch (event.data.id) {
+      case 'write':
+        term.write(event.data.data);
+        break;
     }
-  },
+  }
+}
 
-  hostWrite(s) { term.write(s); }
-});
+const api = new WorkerAPI();

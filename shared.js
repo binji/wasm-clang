@@ -126,39 +126,12 @@ class Memory {
   }
 };
 
-class HostWriteBuffer {
-  constructor(hostWrite) {
-    this.buffer = '';
-    this.hostWrite = hostWrite;
-  }
-
-  write(str) {
-    this.buffer += str;
-    while (true) {
-      const newline = this.buffer.indexOf('\n');
-      if (newline === -1) {
-        break;
-      }
-      this.hostWrite(this.buffer.slice(0, newline + 1));
-      this.buffer = this.buffer.slice(newline + 1);
-    }
-  }
-
-  flush() {
-    if (this.buffer.length > 0) {
-      this.hostWrite(this.buffer + '\n');
-      this.buffer = '';
-    }
-  }
-}
-
 class MemFS {
   constructor(options) {
     const compileStreaming = options.compileStreaming;
     this.hostWrite = options.hostWrite;
     this.memfsFilename = options.memfsFilename;
 
-    this.hostWriteBuffer = new HostWriteBuffer(this.hostWrite);
     this.hostMem_ = null;  // Set later when wired up to application.
 
     // Imports for memfs module.
@@ -205,10 +178,6 @@ class MemFS {
     return new Uint8Array(this.mem.buffer, addr, size);
   }
 
-  hostFlush() {
-    this.hostWriteBuffer.flush();
-  }
-
   abort() { throw new AbortError(); }
 
   host_write(fd, iovs, iovs_len, nwritten_out) {
@@ -225,7 +194,7 @@ class MemFS {
       size += len;
     }
     this.hostMem_.write32(nwritten_out, size);
-    this.hostWriteBuffer.write(str);
+    this.hostWrite(str);
     return ESUCCESS;
   }
 
@@ -545,7 +514,6 @@ class API {
     const testMod = await this.hostLogAsync(`Compiling ${wasm}`,
                                             WebAssembly.compile(buffer));
     await this.run(testMod, wasm);
-    this.memfs.hostFlush();
   }
 }
 
