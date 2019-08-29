@@ -439,6 +439,17 @@ class API {
     this.lldFilename = options.lld || 'lld';
     this.sysrootFilename = options.sysroot || 'sysroot.tar';
 
+    this.clangCommonArgs = [
+      '-disable-free',
+      '-isysroot', '/',
+      '-internal-isystem', '/include/c++/v1',
+      '-internal-isystem', '/include',
+      '-internal-isystem', '/lib/clang/8.0.1/include',
+      '-ferror-limit', '19',
+      '-fmessage-length', '80',
+      '-fcolor-diagnostics',
+    ];
+
     this.memfs = new MemFS({
       compileStreaming : this.compileStreaming,
       hostWrite : this.hostWrite,
@@ -477,28 +488,32 @@ class API {
     await this.hostLogAsync(`Untarring ${filename}`, promise);
   }
 
-  async compile(input, contents, obj) {
+  async compile(options) {
+    const input = options.input;
+    const contents = options.contents;
+    const obj = options.obj;
+    const opt = options.opt || '2';
+
     await this.ready;
     this.memfs.addFile(input, contents);
     const clang = await this.getModule(this.clangFilename);
-    await this.run(clang, 'clang', '-cc1', '-emit-obj', '-disable-free',
-                   '-isysroot', '/', '-internal-isystem', '/include/c++/v1',
-                   '-internal-isystem', '/include', '-internal-isystem',
-                   '/lib/clang/8.0.1/include', '-O2', '-ferror-limit', '19',
-                   '-fmessage-length', '80', '-fcolor-diagnostics', '-o', obj,
-                   '-x', 'c++', input);
+    await this.run(clang, 'clang', '-cc1', '-emit-obj', ...this.clangCommonArgs,
+                   '-O2', '-o', obj, '-x', 'c++', input);
   }
 
-  async compileToAssembly(input, contents) {
+  async compileToAssembly(options) {
+    const input = options.input;
+    const contents = options.contents;
+    const obj = options.obj;
+    const triple = options.triple || 'x86_64';
+    const opt = options.opt || '2';
+
     await this.ready;
     this.memfs.addFile(input, contents);
     const clang = await this.getModule(this.clangFilename);
-    await this.run(clang, 'clang', '-cc1', '-S', '-triple=x86_64', '-mllvm',
-                   '--x86-asm-syntax=intel', '-disable-free', '-isysroot', '/',
-                   '-internal-isystem', '/include/c++/v1', '-internal-isystem',
-                   '/include', '-internal-isystem', '/lib/clang/8.0.1/include',
-                   '-O2', '-ferror-limit', '19', '-fmessage-length', '80',
-                   '-fcolor-diagnostics', '-o', '-', '-x', 'c++', input);
+    await this.run(clang, 'clang', '-cc1', '-S', ...this.clangCommonArgs,
+                   `-triple=${triple}`, '-mllvm', '--x86-asm-syntax=intel',
+                   `-O${opt}`, '-o', '-', '-x', 'c++', input);
   }
 
   async link(obj, wasm) {
@@ -520,7 +535,7 @@ class API {
     const input = `test.cc`;
     const obj = `test.o`;
     const wasm = `test.wasm`;
-    await this.compile(input, contents, obj);
+    await this.compile({input, contents, obj});
     await this.link(obj, wasm);
 
     const buffer = this.memfs.getFileContents(wasm);
