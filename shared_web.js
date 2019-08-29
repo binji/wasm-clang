@@ -10,9 +10,8 @@ const run = debounceLazy(editor => api.compileLinkRun(editor.getValue()), 100);
 const setKeyboard = name => editor.setKeyboardHandler(`ace/keyboard/${name}`);
 
 // Toolbar stuff
-$('#keyboard')
-    .addEventListener('click', event => setKeyboard(event.target.value));
-$('#split').addEventListener('click', event => setSplit(event.target.value));
+$('#keyboard').addEventListener('input', event => setKeyboard(event.target.value));
+$('#split').addEventListener('input', event => setSplit(event.target.value));
 
 // Editor stuff
 const editor = ace.edit('input');

@@ -6,17 +6,18 @@ const initialProgram =
 `;
 
 let triple = 'x86_64';
-function setTriple(newTriple) {
-  triple = newTriple;
-  compile();
-}
+function setTriple(newTriple) { triple = newTriple; compile(); }
 
-$('#triple').addEventListener('click', event => setTriple(event.target.value));
+let opt = '2';
+function setOpt(newOpt) { opt = newOpt; compile(); }
+
+$('#triple').addEventListener('input', event => setTriple(event.target.value));
+$('#opt').addEventListener('input', event => setOpt(event.target.value));
 
 const compile = debounceLazy(async () => {
   const input = `test.cc`;
   const contents = editor.getValue();
-  await api.compileToAssembly({input, contents, triple});
+  await api.compileToAssembly({input, contents, triple, opt});
 }, 100);
 
 editor.session.on('change', compile);
