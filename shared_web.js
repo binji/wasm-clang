@@ -1,56 +1,45 @@
-const $ = document.querySelector.bind(document);
-
 // Warn on close. It's easy to accidentally hit Ctrl+W.
 window.addEventListener('beforeunload', event => {
   event.preventDefault();
   event.returnValue = '';
 });
 
+window.addEventListener('resize', event => layout.updateSize());
+
+let editor;
 const run = debounceLazy(editor => api.compileLinkRun(editor.getValue()), 100);
 const setKeyboard = name => editor.setKeyboardHandler(`ace/keyboard/${name}`);
 
 // Toolbar stuff
-$('#keyboard').addEventListener('input', event => setKeyboard(event.target.value));
-$('#split').addEventListener('input', event => setSplit(event.target.value));
+$('#keyboard').on('input', event => setKeyboard(event.target.value));
 
-// Editor stuff
-const editor = ace.edit('input');
-editor.session.setMode('ace/mode/c_cpp');
-editor.setKeyboardHandler('ace/keyboard/vim');
-editor.setOption('fontSize', 20);
+function EditorComponent(container, state) {
+  editor = ace.edit(container.getElement()[0]);
+  editor.session.setMode('ace/mode/c_cpp');
+  editor.setKeyboardHandler('ace/keyboard/vim');
+  editor.setOption('fontSize', 20);
 
-// Terminal stuff
-Terminal.applyAddon(fit);
-const term = new Terminal({convertEol: true, disableStdin: true, fontSize: 20});
-term.open($('#terminal'));
-term.fit();
-
-// Splitter
-let splitter;
-
-function setSplit(direction) {
-  const gutterEl = $('.gutter');
-  const allEl = $('#all');
-  allEl.className = direction;
-  allEl.setAttribute('style', '');
-
-  if (splitter) splitter.destroy();
-
-  const onDrag = debounceLazy(() => {
-    term.fit();
-    editor.resize();
-  }, 16);
-
-  options = {onDrag};
-  if (direction === 'horiz') {
-    options.columnGutters = [{track: 1, element: gutterEl}];
-  } else {
-    options.rowGutters = [{track: 2, element: gutterEl}];
-  }
-  splitter = Split(options);
-  onDrag();
+  container.on('resize', debounceLazy(event => editor.resize(), 20));
 }
-setSplit('horiz');
+
+let term;
+Terminal.applyAddon(fit);
+function TerminalComponent(container, state) {
+  container.on('open', event => {
+    term = new Terminal({convertEol: true, disableStdin: true, fontSize: 20});
+    term.open(container.getElement()[0]);
+    term.fit();
+  });
+  container.on('resize', debounceLazy(event => term.fit(), 20));
+}
+
+let canvas;
+function CanvasComponent(container, state) {
+  const canvasEl = document.createElement('canvas');
+  canvasEl.className = 'canvas';
+  container.getElement()[0].appendChild(canvasEl);
+  api.postCanvas(canvasEl.transferControlToOffscreen());
+}
 
 class WorkerAPI {
   constructor() {

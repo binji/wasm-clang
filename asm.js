@@ -5,14 +5,35 @@ const initialProgram =
 }
 `;
 
+// Golden Layout
+const layout = new GoldenLayout({
+  content: [{
+    type: 'row',
+    content: [{
+      type: 'component',
+      componentName: 'editor',
+    }, {
+      type: 'component',
+      componentName: 'terminal',
+    }]
+  }]
+}, $('#layout'));
+
+layout.registerComponent('editor', EditorComponent);
+layout.registerComponent('terminal', TerminalComponent);
+
+layout.init();
+
+// Toolbar stuff
 let triple = 'x86_64';
 function setTriple(newTriple) { triple = newTriple; compile(); }
 
 let opt = '2';
 function setOpt(newOpt) { opt = newOpt; compile(); }
 
-$('#triple').addEventListener('input', event => setTriple(event.target.value));
-$('#opt').addEventListener('input', event => setOpt(event.target.value));
+$('#triple').on('input', event => setTriple(event.target.value));
+$('#opt').on('input', event => setOpt(event.target.value));
+
 
 const compile = debounceLazy(async () => {
   const input = `test.cc`;
@@ -20,8 +41,10 @@ const compile = debounceLazy(async () => {
   await api.compileToAssembly({input, contents, triple, opt});
 }, 100);
 
-editor.session.on('change', compile);
-editor.setValue(initialProgram);
-editor.clearSelection();
+layout.on('initialised', event => {
+  editor.session.on('change', compile);
+  editor.setValue(initialProgram);
+  editor.clearSelection();
 
-compile();
+  compile();
+});

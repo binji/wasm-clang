@@ -2,11 +2,14 @@
 <head>
 <meta name="viewport" content="width=480">
 <link rel="stylesheet" href="main.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/golden-layout/1.5.9/css/goldenlayout-base.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/golden-layout/1.5.9/css/goldenlayout-light-theme.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/xterm.min.css" />
 </head>
 <body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.5/ace.js"></script>
-  <script src="split-grid.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/golden-layout/1.5.9/goldenlayout.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/xterm.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/addons/fit/fit.min.js"></script>
   <div id="all" class="horiz">
@@ -15,10 +18,6 @@
         <option value="vim">vim</option>
         <option value="emacs">emacs</option>
         <option value="sublime">sublime</option>
-      </select>
-      <select id="split">
-        <option value="horiz">horizontal</option>
-        <option value="vert">vertical</option>
       </select>
       <select id="triple">
         <option value="x86_64">x86_64</option>
@@ -31,9 +30,7 @@
         <option value="3">-O3</option>
       </select>
     </div>
-    <div id="input" class="item"></div>
-    <div class="gutter"></div>
-    <div id="terminal" class="item"></div>
+    <div id="layout"></div>
   </div>
   <script src="shared.js"></script>
   <script src="shared_web.js"></script>

@@ -13,26 +13,42 @@ int main() {
 }
 `;
 
-// Canvas stuff
-const canvasEl = $('#canvas');
-function showCanvas(show) {
-  $('#terminal').hidden = !show;
-  canvasEl.hidden = show;
-  term.fit();
-}
+// Golden Layout
+const layout = new GoldenLayout({
+  content: [{
+    type: 'row',
+    content: [{
+      type: 'component',
+      componentName: 'editor',
+    }, {
+      type: 'stack',
+      content: [{
+        type: 'component',
+        componentName: 'terminal',
+      }, {
+        type: 'component',
+        componentName: 'canvas',
+      }]
+    }]
+  }]
+}, $('#layout'));
 
-api.postCanvas(canvasEl.transferControlToOffscreen());
+layout.registerComponent('editor', EditorComponent);
+layout.registerComponent('terminal', TerminalComponent);
+layout.registerComponent('canvas', CanvasComponent);
+
+layout.init();
 
 // Toolbar stuff
-$('#run').addEventListener('click', event => run(editor));
-$('#showCanvas')
-    .addEventListener('click', event => showCanvas(!event.target.checked));
+$('#run').on('click', event => run(editor));
 
-// Editor stuff
-editor.commands.addCommand({
-  name: 'run',
-  bindKey: {win: 'Ctrl+Enter', mac: 'Command+Enter'},
-  exec: run
+layout.on('initialised', event => {
+  // Editor stuff
+  editor.commands.addCommand({
+    name: 'run',
+    bindKey: {win: 'Ctrl+Enter', mac: 'Command+Enter'},
+    exec: run
+  });
+  editor.setValue(initialProgram);
+  editor.clearSelection();
 });
-editor.setValue(initialProgram);
-editor.clearSelection();
