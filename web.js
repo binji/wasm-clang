@@ -13,9 +13,22 @@ int main() {
 }
 `;
 
+// Canvas stuff
+const canvasEl = $('#canvas');
+function showCanvas(show) {
+  $('#terminal').hidden = !show;
+  canvasEl.hidden = show;
+  term.fit();
+}
+
+api.postCanvas(canvasEl.transferControlToOffscreen());
+
 // Toolbar stuff
 $('#run').addEventListener('click', event => run(editor));
+$('#showCanvas')
+    .addEventListener('click', event => showCanvas(!event.target.checked));
 
+// Editor stuff
 editor.commands.addCommand({
   name: 'run',
   bindKey: {win: 'Ctrl+Enter', mac: 'Command+Enter'},

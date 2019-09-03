@@ -22,7 +22,7 @@ editor.setOption('fontSize', 20);
 // Terminal stuff
 Terminal.applyAddon(fit);
 const term = new Terminal({convertEol: true, disableStdin: true, fontSize: 20});
-term.open($('#output'));
+term.open($('#terminal'));
 term.fit();
 
 // Splitter
@@ -74,6 +74,11 @@ class WorkerAPI {
 
   compileLinkRun(contents) {
     this.port.postMessage({id: 'compileLinkRun', data: contents});
+  }
+
+  postCanvas(offscreenCanvas) {
+    this.port.postMessage({id : 'postCanvas', data : offscreenCanvas},
+                          [ offscreenCanvas ]);
   }
 
   onmessage(event) {

@@ -228,6 +228,37 @@ class App {
     this.environ = {USER : 'alice'};
     this.memfs = memfs;
 
+    const env = getImportObject(this, [
+      'arc',
+      'arcTo',
+      'beginPath',
+      'clearRect',
+      'closePath',
+      'ellipse',
+      'fill',
+      'fillRect',
+      'fillText',
+      'lineTo',
+      'moveTo',
+      'rect',
+      'setFillStyle',
+      'setFont',
+      'setHeight',
+      'setLineCap',
+      'setLineDashOffset',
+      'setLineJoin',
+      'setLineWidth',
+      'setLineWidth',
+      'setMiterLimit',
+      'setStrokeStyle',
+      'setTextAlign',
+      'setTextBaseline',
+      'setWidth',
+      'stroke',
+      'strokeRect',
+      'strokeText',
+    ]);
+
     const wasi_unstable = getImportObject(this, [
       'proc_exit', 'environ_sizes_get', 'environ_get', 'args_sizes_get',
       'args_get', 'random_get', 'clock_time_get', 'poll_oneoff'
@@ -236,7 +267,7 @@ class App {
     // Fill in some WASI implementations from memfs.
     Object.assign(wasi_unstable, this.memfs.exports);
 
-    this.ready = getInstance(module, {wasi_unstable}).then(instance => {
+    this.ready = getInstance(module, {wasi_unstable, env}).then(instance => {
       this.instance = instance;
       this.exports = this.instance.exports;
       this.mem = new Memory(this.exports.memory);
@@ -321,6 +352,59 @@ class App {
 
   poll_oneoff(in_ptr, out_ptr, nsubscriptions, nevents_out) {
     throw new NotImplemented('wasi_unstable', 'poll_oneoff');
+  }
+
+  // Canvas API
+  setWidth(width) { if (canvas) canvas.width = width; }
+  setHeight(height) { if (canvas) canvas.height = height; }
+
+  arc(...args) { if (ctx2d) ctx2d.arc(...args); }
+  arcTo(...args) { if (ctx2d) ctx2d.arcTo(...args); }
+  beginPath(...args) { if (ctx2d) ctx2d.beginPath(...args); }
+  clearRect(...args) { if (ctx2d) ctx2d.clearRect(...args); }
+  closePath(...args) { if (ctx2d) ctx2d.closePath(...args); }
+  ellipse(...args) { if (ctx2d) ctx2d.ellipse(...args); }
+  fill() { if (ctx2d) ctx2d.fill(); }  // TODO: fillrule
+  fillRect(...args) { if (ctx2d) ctx2d.fillRect(...args); }
+  fillText(text, text_len, x, y) {  // TODO: maxwidth
+    if (ctx2d) ctx2d.fillText(this.mem.readStr(text, text_len), x, y);
+  }
+  lineTo(...args) { if (ctx2d) ctx2d.lineTo(...args); }
+  moveTo(...args) { if (ctx2d) ctx2d.moveTo(...args); }
+  rect(...args) { if (ctx2d) ctx2d.rect(...args); }
+  stroke(...args) { if (ctx2d) ctx2d.stroke(...args); }
+  strokeRect(...args) { if (ctx2d) ctx2d.strokeRect(...args); }
+  strokeText(text, text_len, x, y) {  // TODO: maxwidth
+    if (ctx2d) ctx2d.strokeText(this.mem.readStr(text, text_len), x, y);
+  }
+
+  setFillStyle(buf, len) {
+    if (ctx2d) ctx2d.fillStyle = this.mem.readStr(buf, len);
+  }
+  setFont(buf, len) {
+    if (ctx2d) ctx2d.font = this.mem.readStr(buf, len);
+  }
+  setLineCap(value) {
+    if (ctx2d) ctx2d.lineCap = ['butt', 'round', 'square'][value];
+  }
+  setLineDashOffset(value) { if (ctx2d) ctx2d.lineDashOffset = value; }
+  setLineJoin(buf, len) {
+    if (ctx2d) ctx2d.lineJoin = ['bevel', 'round', 'miter'][value];
+  }
+  setLineWidth(value) { if (ctx2d) ctx2d.lineWidth = value; }
+  setMiterLimit(value) { if (ctx2d) ctx2d.miterLimit = value; }
+  setStrokeStyle(buf, len) {
+    if (ctx2d) ctx2d.strokeStyle = this.mem.readStr(buf, len);
+  }
+  setTextAlign(value) {
+    if (ctx2d)
+      ctx2d.textAlign = ['left', 'right', 'center', 'start', 'end'][value];
+  }
+  setTextBaseline(value) {
+    if (ctx2d)
+      ctx2d.textBaseline = [
+        'top', 'hanging', 'middle', 'alphabetic', 'ideographic', 'bottom'
+      ][value];
   }
 }
 
@@ -492,9 +576,10 @@ class API {
     const crt1 = `${libdir}/crt1.o`;
     await this.ready;
     const lld = await this.getModule(this.lldFilename);
-    await this.run(lld, 'wasm-ld', '--no-threads', '-z',
-                   `stack-size=${stackSize}`, `-L${libdir}`, crt1, obj, '-lc',
-                   '-lc++', '-lc++abi', '-o', wasm)
+    await this.run(lld, 'wasm-ld', '--no-threads',
+                   '--allow-undefined',  // TODO use library w/ imports instead?
+                   '-z', `stack-size=${stackSize}`, `-L${libdir}`, crt1, obj,
+                   '-lc', '-lc++', '-lc++abi', '-o', wasm)
   }
 
   async run(module, ...args) {

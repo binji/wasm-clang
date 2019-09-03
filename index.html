@@ -21,10 +21,15 @@
         <option value="horiz">horizontal</option>
         <option value="vert">vertical</option>
       </select>
+      <input id="showCanvas" type="checkbox"></input>
+      <label for="showCanvas">show canvas</label>
     </div>
     <div id="input" class="item"></div>
     <div class="gutter"></div>
-    <div id="output" class="item"></div>
+    <div id="output">
+      <div id="terminal" class="item"></div>
+      <canvas id="canvas" hidden></canvas>
+    </div>
   </div>
   <script src="shared.js"></script>
   <script src="shared_web.js"></script>
