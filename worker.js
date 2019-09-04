@@ -25,6 +25,8 @@ const apiOptions = {
   hostWrite(s) { port.postMessage({id : 'write', data : s}); }
 };
 
+let currentApp = null;
+
 const onAnyMessage = async event => {
   switch (event.data.id) {
   case 'constructor':
@@ -38,7 +40,11 @@ const onAnyMessage = async event => {
     break;
 
   case 'compileLinkRun':
-    await api.compileLinkRun(event.data.data);
+    if (currentApp) {
+      // Stop running rAF on the previous app, if any.
+      currentApp.allowRequestAnimationFrame = false;
+    }
+    currentApp = await api.compileLinkRun(event.data.data);
     break;
 
   case 'postCanvas':

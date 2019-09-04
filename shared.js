@@ -222,41 +222,59 @@ class MemFS {
   }
 }
 
+const RAF_PROC_EXIT_CODE = 0xC0C0A;
+
 class App {
   constructor(module, memfs, name, ...args) {
     this.argv = [name, ...args];
     this.environ = {USER : 'alice'};
     this.memfs = memfs;
+    this.allowRequestAnimationFrame = true;
 
     const env = getImportObject(this, [
-      'arc',
-      'arcTo',
-      'beginPath',
-      'clearRect',
-      'closePath',
-      'ellipse',
-      'fill',
-      'fillRect',
-      'fillText',
-      'lineTo',
-      'moveTo',
-      'rect',
-      'setFillStyle',
-      'setFont',
-      'setHeight',
-      'setLineCap',
-      'setLineDashOffset',
-      'setLineJoin',
-      'setLineWidth',
-      'setLineWidth',
-      'setMiterLimit',
-      'setStrokeStyle',
-      'setTextAlign',
-      'setTextBaseline',
-      'setWidth',
-      'stroke',
-      'strokeRect',
-      'strokeText',
+      'canvas_arc',
+      'canvas_arcTo',
+      'canvas_beginPath',
+      'canvas_bezierCurveTo',
+      'canvas_clearRect',
+      'canvas_clip',
+      'canvas_closePath',
+      'canvas_ellipse',
+      'canvas_fill',
+      'canvas_fillRect',
+      'canvas_fillText',
+      'canvas_lineTo',
+      'canvas_moveTo',
+      'canvas_quadraticCurveTo',
+      'canvas_rect',
+      'canvas_requestAnimationFrame',
+      'canvas_restore',
+      'canvas_rotate',
+      'canvas_save',
+      'canvas_scale',
+      'canvas_setFillStyle',
+      'canvas_setFont',
+      'canvas_setGlobalAlpha',
+      'canvas_setHeight',
+      'canvas_setLineCap',
+      'canvas_setLineDashOffset',
+      'canvas_setLineJoin',
+      'canvas_setLineWidth',
+      'canvas_setMiterLimit',
+      'canvas_setShadowBlur',
+      'canvas_setShadowColor',
+      'canvas_setShadowOffsetX',
+      'canvas_setShadowOffsetY',
+      'canvas_setStrokeStyle',
+      'canvas_setTextAlign',
+      'canvas_setTextBaseline',
+      'canvas_setTransform',
+      'canvas_setWidth',
+      'canvas_stroke',
+      'canvas_strokeRect',
+      'canvas_strokeText',
+      'canvas_transform',
+      'canvas_translate',
     ]);
 
     const wasi_unstable = getImportObject(this, [
@@ -280,10 +298,20 @@ class App {
     try {
       this.exports._start();
     } catch (exn) {
-      if (!(exn instanceof ProcExit) || exn.code != 0) {
-        throw exn;
+      if (exn instanceof ProcExit) {
+        if (exn.code === RAF_PROC_EXIT_CODE) {
+          return true;
+        }
+        if (exn.code == 0) {
+          return false;
+        }
       }
+      throw exn;
     }
+  }
+
+  frameLoop(timeMs) {
+    this.exports.frame_loop(timeMs);
   }
 
   proc_exit(code) {
@@ -355,52 +383,74 @@ class App {
   }
 
   // Canvas API
-  setWidth(width) { if (canvas) canvas.width = width; }
-  setHeight(height) { if (canvas) canvas.height = height; }
+  canvas_setWidth(width) { if (canvas) canvas.width = width; }
+  canvas_setHeight(height) { if (canvas) canvas.height = height; }
+  canvas_requestAnimationFrame() {
+    if (this.allowRequestAnimationFrame) {
+      requestAnimationFrame(this.frameLoop.bind(this));
+    }
+  }
 
-  arc(...args) { if (ctx2d) ctx2d.arc(...args); }
-  arcTo(...args) { if (ctx2d) ctx2d.arcTo(...args); }
-  beginPath(...args) { if (ctx2d) ctx2d.beginPath(...args); }
-  clearRect(...args) { if (ctx2d) ctx2d.clearRect(...args); }
-  closePath(...args) { if (ctx2d) ctx2d.closePath(...args); }
-  ellipse(...args) { if (ctx2d) ctx2d.ellipse(...args); }
-  fill() { if (ctx2d) ctx2d.fill(); }  // TODO: fillrule
-  fillRect(...args) { if (ctx2d) ctx2d.fillRect(...args); }
-  fillText(text, text_len, x, y) {  // TODO: maxwidth
+  canvas_arc(...args) { if (ctx2d) ctx2d.arc(...args); }
+  canvas_arcTo(...args) { if (ctx2d) ctx2d.arcTo(...args); }
+  canvas_beginPath(...args) { if (ctx2d) ctx2d.beginPath(...args); }
+  canvas_bezierCurveTo(...args) { if (ctx2d) ctx2d.bezierCurveTo(...args); }
+  canvas_clearRect(...args) { if (ctx2d) ctx2d.clearRect(...args); }
+  canvas_clip(value) { if (ctx2d) ctx2d.clip(['nonzero', 'evenodd'][value]); }
+  canvas_closePath(...args) { if (ctx2d) ctx2d.closePath(...args); }
+  canvas_ellipse(...args) { if (ctx2d) ctx2d.ellipse(...args); }
+  canvas_fill(value) { if (ctx2d) ctx2d.fill(['nonzero', 'evenodd'][value]); }
+  canvas_fillRect(...args) { if (ctx2d) ctx2d.fillRect(...args); }
+  canvas_fillText(text, text_len, x, y) {  // TODO: maxwidth
     if (ctx2d) ctx2d.fillText(this.mem.readStr(text, text_len), x, y);
   }
-  lineTo(...args) { if (ctx2d) ctx2d.lineTo(...args); }
-  moveTo(...args) { if (ctx2d) ctx2d.moveTo(...args); }
-  rect(...args) { if (ctx2d) ctx2d.rect(...args); }
-  stroke(...args) { if (ctx2d) ctx2d.stroke(...args); }
-  strokeRect(...args) { if (ctx2d) ctx2d.strokeRect(...args); }
-  strokeText(text, text_len, x, y) {  // TODO: maxwidth
+  canvas_lineTo(...args) { if (ctx2d) ctx2d.lineTo(...args); }
+  canvas_moveTo(...args) { if (ctx2d) ctx2d.moveTo(...args); }
+  canvas_quadraticCurveTo(...args) { if (ctx2d) ctx2d.quadraticCurveTo(...args); }
+  canvas_rect(...args) { if (ctx2d) ctx2d.rect(...args); }
+  canvas_restore(...args) { if (ctx2d) ctx2d.restore(...args); }
+  canvas_rotate(...args) { if (ctx2d) ctx2d.rotate(...args); }
+  canvas_save(...args) { if (ctx2d) ctx2d.save(...args); }
+  canvas_scale(...args) { if (ctx2d) ctx2d.scale(...args); }
+  canvas_setTransform(...args) { if (ctx2d) ctx2d.setTransform(...args); }
+  canvas_stroke(...args) { if (ctx2d) ctx2d.stroke(...args); }
+  canvas_strokeRect(...args) { if (ctx2d) ctx2d.strokeRect(...args); }
+  canvas_strokeText(text, text_len, x, y) {  // TODO: maxwidth
     if (ctx2d) ctx2d.strokeText(this.mem.readStr(text, text_len), x, y);
   }
+  canvas_transform(...args) { if (ctx2d) ctx2d.transform(...args); }
+  canvas_translate(...args) { if (ctx2d) ctx2d.translate(...args); }
 
-  setFillStyle(buf, len) {
+  canvas_setFillStyle(buf, len) {
     if (ctx2d) ctx2d.fillStyle = this.mem.readStr(buf, len);
   }
-  setFont(buf, len) {
+  canvas_setFont(buf, len) {
     if (ctx2d) ctx2d.font = this.mem.readStr(buf, len);
   }
-  setLineCap(value) {
+  canvas_setGlobalAlpha(value) { if (ctx2d) ctx2d.globalAlpha = value; }
+  canvas_setLineCap(value) {
     if (ctx2d) ctx2d.lineCap = ['butt', 'round', 'square'][value];
   }
-  setLineDashOffset(value) { if (ctx2d) ctx2d.lineDashOffset = value; }
-  setLineJoin(buf, len) {
+  canvas_setLineDashOffset(value) { if (ctx2d) ctx2d.lineDashOffset = value; }
+  canvas_setLineJoin(value) {
     if (ctx2d) ctx2d.lineJoin = ['bevel', 'round', 'miter'][value];
   }
-  setLineWidth(value) { if (ctx2d) ctx2d.lineWidth = value; }
-  setMiterLimit(value) { if (ctx2d) ctx2d.miterLimit = value; }
-  setStrokeStyle(buf, len) {
+  canvas_setLineWidth(value) { if (ctx2d) ctx2d.lineWidth = value; }
+  canvas_setMiterLimit(value) { if (ctx2d) ctx2d.miterLimit = value; }
+  canvas_setShadowBlur(value) { if (ctx2d) ctx2d.shadowBlur = value; }
+  canvas_setShadowColor(buf, len) {
+    if (ctx2d) ctx2d.shadowColor = this.mem.readStr(buf, len);
+  }
+  canvas_setShadowOffsetX(value) { if (ctx2d) ctx2d.setShadowOffsetX = value; }
+  canvas_setShadowOffsetY(value) { if (ctx2d) ctx2d.setShadowOffsetY = value; }
+  canvas_setStrokeStyle(buf, len) {
     if (ctx2d) ctx2d.strokeStyle = this.mem.readStr(buf, len);
   }
-  setTextAlign(value) {
+  canvas_setTextAlign(value) {
     if (ctx2d)
       ctx2d.textAlign = ['left', 'right', 'center', 'start', 'end'][value];
   }
-  setTextBaseline(value) {
+  canvas_setTextBaseline(value) {
     if (ctx2d)
       ctx2d.textBaseline = [
         'top', 'hanging', 'middle', 'alphabetic', 'ideographic', 'bottom'
@@ -550,8 +600,9 @@ class API {
     await this.ready;
     this.memfs.addFile(input, contents);
     const clang = await this.getModule(this.clangFilename);
-    await this.run(clang, 'clang', '-cc1', '-emit-obj', ...this.clangCommonArgs,
-                   '-O2', '-o', obj, '-x', 'c++', input);
+    return await this.run(clang, 'clang', '-cc1', '-emit-obj',
+                          ...this.clangCommonArgs, '-O2', '-o', obj, '-x',
+                          'c++', input);
   }
 
   async compileToAssembly(options) {
@@ -564,9 +615,10 @@ class API {
     await this.ready;
     this.memfs.addFile(input, contents);
     const clang = await this.getModule(this.clangFilename);
-    await this.run(clang, 'clang', '-cc1', '-S', ...this.clangCommonArgs,
-                   `-triple=${triple}`, '-mllvm', '--x86-asm-syntax=intel',
-                   `-O${opt}`, '-o', '-', '-x', 'c++', input);
+    return await this.run(clang, 'clang', '-cc1', '-S', ...this.clangCommonArgs,
+                          `-triple=${triple}`, '-mllvm',
+                          '--x86-asm-syntax=intel', `-O${opt}`, '-o', '-', '-x',
+                          'c++', input);
   }
 
   async link(obj, wasm) {
@@ -576,16 +628,19 @@ class API {
     const crt1 = `${libdir}/crt1.o`;
     await this.ready;
     const lld = await this.getModule(this.lldFilename);
-    await this.run(lld, 'wasm-ld', '--no-threads',
-                   '--allow-undefined',  // TODO use library w/ imports instead?
-                   '-z', `stack-size=${stackSize}`, `-L${libdir}`, crt1, obj,
-                   '-lc', '-lc++', '-lc++abi', '-o', wasm)
+    return await this.run(
+        lld, 'wasm-ld', '--no-threads',
+        '--allow-undefined', // TODO use library w/ imports instead?
+        '--export-dynamic',  // TODO required?
+        '-z', `stack-size=${stackSize}`, `-L${libdir}`, crt1, obj, '-lc',
+        '-lc++', '-lc++abi', '-o', wasm)
   }
 
   async run(module, ...args) {
     this.hostLog(`${args.join(' ')}\n`);
     const app = new App(module, this.memfs, ...args);
-    await app.run();
+    const stillRunning = await app.run();
+    return stillRunning ? app : null;
   }
 
   async compileLinkRun(contents) {
@@ -598,7 +653,7 @@ class API {
     const buffer = this.memfs.getFileContents(wasm);
     const testMod = await this.hostLogAsync(`Compiling ${wasm}`,
                                             WebAssembly.compile(buffer));
-    await this.run(testMod, wasm);
+    return await this.run(testMod, wasm);
   }
 }
 
