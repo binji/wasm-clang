@@ -1,15 +1,16 @@
 const initialProgram =
-`#include <stdio.h>
-
-int fac(int n) {
-    if (n < 1) return 1;
-    return n * fac(n - 1);
-}
+`#include <canvas.h>
 
 int main() {
-    for (int i = 1; i <= 10; ++i) {
-        printf("fac(%d) = %d\\n", i, fac(i));
-    }
+    canvas_setWidth(1000);
+    canvas_setHeight(800);
+
+    canvas_setFillStyleZ("white");
+    canvas_fillRect(0, 0, 1000, 800);
+
+    canvas_setFillStyleZ("black");
+    canvas_setFontZ("100px impact");
+    canvas_fillTextZ("Hello, World!", 250, 450);
 }
 `;
 
