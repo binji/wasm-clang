@@ -302,6 +302,8 @@ class App {
         if (exn.code === RAF_PROC_EXIT_CODE) {
           return true;
         }
+        // Don't allow rAF unless you return the right code.
+        this.allowRequestAnimationFrame = false;
         if (exn.code == 0) {
           return false;
         }
