@@ -18,8 +18,20 @@ function EditorComponent(container, state) {
   editor.session.setMode('ace/mode/c_cpp');
   editor.setKeyboardHandler('ace/keyboard/vim');
   editor.setOption('fontSize', 20);
+  editor.setValue(state.value ? state.value : '');
+  editor.clearSelection();
+
+  editor.on('change', debounceLazy(event => {
+    container.extendState({value: editor.getValue()});
+  }, 500));
 
   container.on('resize', debounceLazy(event => editor.resize(), 20));
+  container.on('destroy', event => {
+    if (editor) {
+      editor.destroy();
+      editor = null;
+    }
+  });
 }
 
 let term;
@@ -31,6 +43,12 @@ function TerminalComponent(container, state) {
     term.fit();
   });
   container.on('resize', debounceLazy(event => term.fit(), 20));
+  container.on('destroy', event => {
+    if (term) {
+      term.destroy();
+      term = null;
+    }
+  });
 }
 
 let canvas;

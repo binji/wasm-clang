@@ -13,13 +13,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/xterm.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/addons/fit/fit.min.js"></script>
   <div id="all" class="horiz">
-    <div id="toolbar">
+    <div class="toolbar-left">
       <button id="run">run</button>
       <select id="keyboard">
         <option value="vim">vim</option>
         <option value="emacs">emacs</option>
         <option value="sublime">sublime</option>
       </select>
+    </div>
+    <div class="toolbar-right">
+      <button id="reset">reset</button>
     </div>
     <div id="layout"></div>
   </div>

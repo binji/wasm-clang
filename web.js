@@ -1,3 +1,5 @@
+const LAYOUT_CONFIG_KEY = 'layoutConfig';
+
 const initialProgram =
 `#include <canvas.h>
 #include <stdint.h>
@@ -24,41 +26,73 @@ int main() {
 `;
 
 // Golden Layout
-const layout = new GoldenLayout({
-  content: [{
-    type: 'row',
+let layout = null;
+
+function initLayout() {
+  const defaultLayoutConfig = {
+    settings: {
+      showCloseIcon: false,
+      showPopoutIcon: false,
+    },
     content: [{
-      type: 'component',
-      componentName: 'editor',
-    }, {
-      type: 'stack',
+      type: 'row',
       content: [{
         type: 'component',
-        componentName: 'terminal',
+        componentName: 'editor',
+        componentState: {value: initialProgram},
       }, {
-        type: 'component',
-        componentName: 'canvas',
+        type: 'stack',
+        content: [{
+          type: 'component',
+          componentName: 'terminal',
+        }, {
+          type: 'component',
+          componentName: 'canvas',
+        }]
       }]
     }]
-  }]
-}, $('#layout'));
+  };
 
-layout.registerComponent('editor', EditorComponent);
-layout.registerComponent('terminal', TerminalComponent);
-layout.registerComponent('canvas', CanvasComponent);
+  let layoutConfig = localStorage.getItem('layoutConfig');
+  if (layoutConfig) {
+    layoutConfig = JSON.parse(layoutConfig);
+  } else {
+    layoutConfig = defaultLayoutConfig;
+  }
+  layout = new GoldenLayout(layoutConfig, $('#layout'));
 
-layout.init();
+  layout.on('initialised', event => {
+    // Editor stuff
+    editor.commands.addCommand({
+      name: 'run',
+      bindKey: {win: 'Ctrl+Enter', mac: 'Command+Enter'},
+      exec: run
+    });
+  });
+
+  layout.on('stateChanged', debounceLazy(() => {
+    const state = JSON.stringify(layout.toConfig());
+    localStorage.setItem('layoutConfig', state);
+  }, 500));
+
+  layout.registerComponent('editor', EditorComponent);
+  layout.registerComponent('terminal', TerminalComponent);
+  layout.registerComponent('canvas', CanvasComponent);
+  layout.init();
+}
+
+function resetLayout() {
+  localStorage.removeItem('layoutConfig');
+  if (layout) {
+    layout.destroy();
+    layout = null;
+  }
+  initLayout();
+}
 
 // Toolbar stuff
+$('#reset').on('click', event => { if (confirm('really reset?')) resetLayout() });
 $('#run').on('click', event => run(editor));
 
-layout.on('initialised', event => {
-  // Editor stuff
-  editor.commands.addCommand({
-    name: 'run',
-    bindKey: {win: 'Ctrl+Enter', mac: 'Command+Enter'},
-    exec: run
-  });
-  editor.setValue(initialProgram);
-  editor.clearSelection();
-});
+
+initLayout();
