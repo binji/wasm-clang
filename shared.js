@@ -28,12 +28,11 @@ function debounceLazy(f, ms) {
 
 const API = (function() {
 
-class ProcExit {
+class ProcExit extends Error {
   constructor(code) {
+    super(`process exited with code ${code}.`);
     this.code = code;
-    this.msg = `process exited with code ${code}.`;
   }
-  toString() { return this.msg; }
 };
 
 class NotImplemented extends Error {
@@ -305,6 +304,7 @@ class App {
     try {
       this.exports._start();
     } catch (exn) {
+      let writeStack = true;
       if (exn instanceof ProcExit) {
         if (exn.code === RAF_PROC_EXIT_CODE) {
           return true;
@@ -314,7 +314,18 @@ class App {
         if (exn.code == 0) {
           return false;
         }
+        writeStack = false;
       }
+
+      // Write error message.
+      let msg = `\x1b[91mError: ${exn.message}`;
+      if (writeStack) {
+        msg = msg + `\n${exn.stack}`;
+      }
+      msg += '\x1b[0m\n';
+      this.memfs.hostWrite(msg);
+
+      // Propagate error.
       throw exn;
     }
   }
@@ -675,7 +686,7 @@ class API {
   }
 
   async link(obj, wasm) {
-    const stackSize = 262144;
+    const stackSize = 1024 * 1024;
 
     const libdir = 'lib/wasm32-wasi';
     const crt1 = `${libdir}/crt1.o`;
