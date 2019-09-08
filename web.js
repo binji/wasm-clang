@@ -1,16 +1,15 @@
 const initialProgram =
 `#include <canvas.h>
 
+Canvas c{1000, 800};
+
 int main() {
-    canvas_setWidth(1000);
-    canvas_setHeight(800);
+    c.setFillStyle("white");
+    c.fillRect(0, 0, 1000, 800);
 
-    canvas_setFillStyleZ("white");
-    canvas_fillRect(0, 0, 1000, 800);
-
-    canvas_setFillStyleZ("black");
-    canvas_setFontZ("100px impact");
-    canvas_fillTextZ("Hello, World!", 250, 450);
+    c.setFillStyle("black");
+    c.setFont("100px impact");
+    c.fillText("Hello, World!", 250, 450);
 }
 `;
 
