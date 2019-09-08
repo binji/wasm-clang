@@ -230,6 +230,8 @@ class App {
     this.environ = {USER : 'alice'};
     this.memfs = memfs;
     this.allowRequestAnimationFrame = true;
+    this.handles = new Map();
+    this.nextHandle = 0;
 
     const env = getImportObject(this, [
       'canvas_arc',
@@ -239,12 +241,17 @@ class App {
       'canvas_clearRect',
       'canvas_clip',
       'canvas_closePath',
+      'canvas_createImageData',
+      'canvas_destroyHandle',
       'canvas_ellipse',
       'canvas_fill',
       'canvas_fillRect',
       'canvas_fillText',
+      'canvas_imageDataSetData',
       'canvas_lineTo',
+      'canvas_measureText',
       'canvas_moveTo',
+      'canvas_putImageData',
       'canvas_quadraticCurveTo',
       'canvas_rect',
       'canvas_requestAnimationFrame',
@@ -384,6 +391,10 @@ class App {
     throw new NotImplemented('wasi_unstable', 'poll_oneoff');
   }
 
+  canvas_destroyHandle(handle) {
+    this.handles.delete(handle);
+  }
+
   // Canvas API
   canvas_setWidth(width) { if (canvas) canvas.width = width; }
   canvas_setHeight(height) { if (canvas) canvas.height = height; }
@@ -393,6 +404,34 @@ class App {
     }
   }
 
+  // ImageData stuff
+  canvas_createImageData(w, h) {
+    if (ctx2d) {
+      const imageData = ctx2d.createImageData(w, h);
+      const handle = this.nextHandle++;
+      this.handles.set(handle, imageData);
+      return handle;
+    }
+    return -1;
+  }
+  canvas_putImageData(handle, x, y) {
+    if (ctx2d) {
+      const imageData = this.handles.get(handle);
+      if (imageData) {
+        ctx2d.putImageData(imageData, x, y);
+      }
+    }
+  }
+  canvas_imageDataSetData(handle, buffer, offset, size) {
+    const imageData = this.handles.get(handle);
+    if (imageData) {
+      this.mem.check();
+      const src = new Uint8Array(this.mem.buffer, buffer, size);
+      imageData.data.set(src, offset);
+    }
+  }
+
+  // Other Canvas methods.
   canvas_arc(...args) { if (ctx2d) ctx2d.arc(...args); }
   canvas_arcTo(...args) { if (ctx2d) ctx2d.arcTo(...args); }
   canvas_beginPath(...args) { if (ctx2d) ctx2d.beginPath(...args); }
@@ -404,9 +443,15 @@ class App {
   canvas_fill(value) { if (ctx2d) ctx2d.fill(['nonzero', 'evenodd'][value]); }
   canvas_fillRect(...args) { if (ctx2d) ctx2d.fillRect(...args); }
   canvas_fillText(text, text_len, x, y) {  // TODO: maxwidth
+    this.mem.check();
     if (ctx2d) ctx2d.fillText(this.mem.readStr(text, text_len), x, y);
   }
   canvas_lineTo(...args) { if (ctx2d) ctx2d.lineTo(...args); }
+  canvas_measureText(text, text_len) {
+    this.mem.check();
+    if (ctx2d) return ctx2d.measureText(this.mem.readStr(text, text_len)).width;
+    return 0;
+  }
   canvas_moveTo(...args) { if (ctx2d) ctx2d.moveTo(...args); }
   canvas_quadraticCurveTo(...args) { if (ctx2d) ctx2d.quadraticCurveTo(...args); }
   canvas_rect(...args) { if (ctx2d) ctx2d.rect(...args); }
@@ -418,15 +463,19 @@ class App {
   canvas_stroke(...args) { if (ctx2d) ctx2d.stroke(...args); }
   canvas_strokeRect(...args) { if (ctx2d) ctx2d.strokeRect(...args); }
   canvas_strokeText(text, text_len, x, y) {  // TODO: maxwidth
+    this.mem.check();
     if (ctx2d) ctx2d.strokeText(this.mem.readStr(text, text_len), x, y);
   }
   canvas_transform(...args) { if (ctx2d) ctx2d.transform(...args); }
   canvas_translate(...args) { if (ctx2d) ctx2d.translate(...args); }
 
+  // Canvas properties.
   canvas_setFillStyle(buf, len) {
+    this.mem.check();
     if (ctx2d) ctx2d.fillStyle = this.mem.readStr(buf, len);
   }
   canvas_setFont(buf, len) {
+    this.mem.check();
     if (ctx2d) ctx2d.font = this.mem.readStr(buf, len);
   }
   canvas_setGlobalAlpha(value) { if (ctx2d) ctx2d.globalAlpha = value; }
@@ -441,11 +490,13 @@ class App {
   canvas_setMiterLimit(value) { if (ctx2d) ctx2d.miterLimit = value; }
   canvas_setShadowBlur(value) { if (ctx2d) ctx2d.shadowBlur = value; }
   canvas_setShadowColor(buf, len) {
+    this.mem.check();
     if (ctx2d) ctx2d.shadowColor = this.mem.readStr(buf, len);
   }
   canvas_setShadowOffsetX(value) { if (ctx2d) ctx2d.setShadowOffsetX = value; }
   canvas_setShadowOffsetY(value) { if (ctx2d) ctx2d.setShadowOffsetY = value; }
   canvas_setStrokeStyle(buf, len) {
+    this.mem.check();
     if (ctx2d) ctx2d.strokeStyle = this.mem.readStr(buf, len);
   }
   canvas_setTextAlign(value) {
