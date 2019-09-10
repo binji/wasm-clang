@@ -98,3 +98,12 @@ class WorkerAPI {
 }
 
 const api = new WorkerAPI();
+
+
+// ServiceWorker stuff
+navigator.serviceWorker.register('./service_worker.js')
+.then(reg => {
+  console.log('Registration succeeded. Scope is ' + reg.scope);
+}).catch(error => {
+  console.log('Registration failed with ' + error);
+});
