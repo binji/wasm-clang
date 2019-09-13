@@ -56,7 +56,24 @@ function CanvasComponent(container, state) {
   const canvasEl = document.createElement('canvas');
   canvasEl.className = 'canvas';
   container.getElement()[0].appendChild(canvasEl);
-  api.postCanvas(canvasEl.transferControlToOffscreen());
+  // TODO: Figure out how to proxy canvas calls. I started to work on this, but
+  // it's trickier than I thought to handle things like rAF. I also don't think
+  // it's possible to handle ctx2d.measureText.
+  if (canvasEl.transferControlToOffscreen) {
+    api.postCanvas(canvasEl.transferControlToOffscreen());
+  } else {
+    const w = 800;
+    const h = 600;
+    canvasEl.width = w;
+    canvasEl.height = h;
+    const ctx2d = canvasEl.getContext('2d');
+    const msg = 'offscreenCanvas is not supported :(';
+    ctx2d.font = 'bold 35px sans';
+    ctx2d.fillStyle = 'black';
+    const x = (w - ctx2d.measureText(msg).width) / 2;
+    const y = (h + 20) / 2;
+    ctx2d.fillText(msg, x, y);
+  }
 }
 
 class WorkerAPI {
@@ -101,9 +118,11 @@ const api = new WorkerAPI();
 
 
 // ServiceWorker stuff
-navigator.serviceWorker.register('./service_worker.js')
-.then(reg => {
-  console.log('Registration succeeded. Scope is ' + reg.scope);
-}).catch(error => {
-  console.log('Registration failed with ' + error);
-});
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.register('./service_worker.js')
+  .then(reg => {
+    console.log('Registration succeeded. Scope is ' + reg.scope);
+  }).catch(error => {
+    console.log('Registration failed with ' + error);
+  });
+}
