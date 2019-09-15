@@ -709,10 +709,9 @@ class API {
     const lld = await this.getModule(this.lldFilename);
     return await this.run(
         lld, 'wasm-ld', '--no-threads',
-        '--allow-undefined', // TODO use library w/ imports instead?
         '--export-dynamic',  // TODO required?
         '-z', `stack-size=${stackSize}`, `-L${libdir}`, crt1, obj, '-lc',
-        '-lc++', '-lc++abi', '-o', wasm)
+        '-lc++', '-lc++abi', '-lcanvas', '-o', wasm)
   }
 
   async run(module, ...args) {
