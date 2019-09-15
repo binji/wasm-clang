@@ -2,8 +2,14 @@ function sleep(ms) {
   return new Promise((resolve, _) => setTimeout(resolve, ms));
 }
 
-function msToSec(start, end) {
-  return ((end - start) / 1000).toFixed(2);
+function readStr(u8, o, len = -1) {
+  let str = '';
+  let end = u8.length;
+  if (len != -1)
+    end = o + len;
+  for (let i = o; i < end && u8[i] != 0; ++i)
+    str += String.fromCharCode(u8[i]);
+  return str;
 }
 
 function debounceLazy(f, ms) {
@@ -71,14 +77,8 @@ function getImportObject(obj, names) {
   return result;
 }
 
-function readStr(u8, o, len = -1) {
-  let str = '';
-  let end = u8.length;
-  if (len != -1)
-    end = o + len;
-  for (let i = o; i < end && u8[i] != 0; ++i)
-    str += String.fromCharCode(u8[i]);
-  return str;
+function msToSec(start, end) {
+  return ((end - start) / 1000).toFixed(2);
 }
 
 const ESUCCESS = 0;
@@ -684,6 +684,7 @@ class API {
 
   async compileToAssembly(options) {
     const input = options.input;
+    const output = options.output;
     const contents = options.contents;
     const obj = options.obj;
     const triple = options.triple || 'x86_64';
@@ -692,10 +693,11 @@ class API {
     await this.ready;
     this.memfs.addFile(input, contents);
     const clang = await this.getModule(this.clangFilename);
-    return await this.run(clang, 'clang', '-cc1', '-S', ...this.clangCommonArgs,
+    await this.run(clang, 'clang', '-cc1', '-S', ...this.clangCommonArgs,
                           `-triple=${triple}`, '-mllvm',
-                          '--x86-asm-syntax=intel', `-O${opt}`, '-o', '-', '-x',
-                          'c++', input);
+                          '--x86-asm-syntax=intel', `-O${opt}`,
+                          '-o', output, '-x', 'c++', input);
+    return this.memfs.getFileContents(output);
   }
 
   async link(obj, wasm) {

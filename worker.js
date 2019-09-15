@@ -39,9 +39,18 @@ const onAnyMessage = async event => {
     api.showTiming = event.data.data;
     break;
 
-  case 'compileToAssembly':
-    await api.compileToAssembly(event.data.data);
+  case 'compileToAssembly': {
+    const responseId = event.data.responseId;
+    let output = null;
+    let transferList;
+    try {
+      output = await api.compileToAssembly(event.data.data);
+    } finally {
+      port.postMessage({id : 'compileToAssembly', responseId, data : output},
+                       transferList);
+    }
     break;
+  }
 
   case 'compileLinkRun':
     if (currentApp) {

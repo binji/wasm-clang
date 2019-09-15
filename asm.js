@@ -7,6 +7,21 @@ const initialProgram =
 }
 `;
 
+let asmEditor = null;
+function AsmEditorComponent(container, state) {
+  asmEditor = ace.edit(container.getElement()[0]);
+  asmEditor.session.setMode('ace/mode/assembly_x86');
+  asmEditor.setOption('fontSize', 20);
+  asmEditor.setReadOnly(true);
+  container.on('resize', debounceLazy(event => asmEditor.resize(), 20));
+  container.on('destroy', event => {
+    if (asmEditor) {
+      asmEditor.destroy();
+      asmEditor = null;
+    }
+  });
+}
+
 // Golden Layout
 let layout = null;
 
@@ -23,10 +38,13 @@ function initLayout() {
         componentName: 'editor',
         componentState: {value: initialProgram},
       }, {
-        type: 'stack',
+        type: 'column',
         content: [{
           type: 'component',
           componentName: 'terminal',
+        }, {
+          type: 'component',
+          componentName: 'asmEditor',
         }]
       }]
     }]
@@ -52,6 +70,7 @@ function initLayout() {
 
   layout.registerComponent('editor', EditorComponent);
   layout.registerComponent('terminal', TerminalComponent);
+  layout.registerComponent('asmEditor', AsmEditorComponent);
   layout.init();
 }
 
@@ -78,9 +97,20 @@ $('#opt').on('input', event => setOpt(event.target.value));
 
 
 const compile = debounceLazy(async () => {
-  const input = `test.cc`;
+  const input = 'test.cc';
+  const output = 'test.S';
   const contents = editor.getValue();
-  await api.compileToAssembly({input, contents, triple, opt});
+  const outputBuf =
+      await api.compileToAssembly({input, output, contents, triple, opt});
+  let str = '';
+  if (outputBuf) {
+    const u8 = new Uint8Array(outputBuf);
+    str = readStr(u8, 0, u8.length);
+  }
+  if (asmEditor) {
+    asmEditor.setValue(str);
+    asmEditor.clearSelection();
+  }
 }, 100);
 
 

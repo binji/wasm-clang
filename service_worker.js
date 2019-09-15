@@ -1,17 +1,21 @@
 // Copied from:
 // https://developers.google.com/web/fundamentals/primers/service-workers/
+// https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle
 // https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers
+
+const expectedCaches = ['v2'];
 
 const cdn = 'https://cdnjs.cloudflare.com/ajax/libs';
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open('v1').then(cache => {
+    caches.open('v2').then(cache => {
       return cache.addAll([
         `${cdn}/ace/1.4.5/ace.js`,
         `${cdn}/ace/1.4.5/keybinding-emacs.js`,
         `${cdn}/ace/1.4.5/keybinding-sublime.js`,
         `${cdn}/ace/1.4.5/keybinding-vim.js`,
+        `${cdn}/ace/1.4.5/mode-assembly_x86.js`,
         `${cdn}/ace/1.4.5/mode-c_cpp.js`,
         `${cdn}/golden-layout/1.5.9/css/goldenlayout-base.css`,
         `${cdn}/golden-layout/1.5.9/css/goldenlayout-light-theme.css`,
@@ -35,6 +39,19 @@ self.addEventListener('install', event => {
         './worker.js',
       ]);
     })
+  );
+});
+
+self.addEventListener('activate', event => {
+  // delete any caches that aren't in expectedCaches
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.map(key => {
+        if (!expectedCaches.includes(key)) {
+          return caches.delete(key);
+        }
+      })
+    ))
   );
 });
 

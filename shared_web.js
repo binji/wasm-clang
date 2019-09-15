@@ -79,6 +79,8 @@ function CanvasComponent(container, state) {
 
 class WorkerAPI {
   constructor() {
+    this.nextResponseId = 0;
+    this.responseCBs = new Map();
     this.worker = new Worker('worker.js');
     const channel = new MessageChannel();
     this.port = channel.port1;
@@ -97,8 +99,17 @@ class WorkerAPI {
     this.worker.terminate();
   }
 
-  compileToAssembly(options) {
-    this.port.postMessage({id: 'compileToAssembly', data: options});
+  async compileToAssembly(options) {
+    const responseId = this.nextResponseId++;
+    const responsePromise = new Promise((resolve, reject) => {
+      this.responseCBs.set(responseId, {resolve, reject});
+    });
+    this.port.postMessage({
+      id: 'compileToAssembly',
+      responseId,
+      data: options
+    });
+    return await responsePromise;
   }
 
   compileLinkRun(contents) {
@@ -115,6 +126,16 @@ class WorkerAPI {
       case 'write':
         term.write(event.data.data);
         break;
+
+      case 'compileToAssembly': {
+        const responseId = event.data.responseId;
+        const promise = this.responseCBs.get(responseId);
+        if (promise) {
+          this.responseCBs.delete(responseId);
+          promise.resolve(event.data.data);
+        }
+        break;
+      }
     }
   }
 }
