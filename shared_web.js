@@ -12,6 +12,7 @@ const setKeyboard = name => editor.setKeyboardHandler(`ace/keyboard/${name}`);
 
 // Toolbar stuff
 $('#keyboard').on('input', event => setKeyboard(event.target.value));
+$('#showTiming').on('click', event => { api.setShowTiming(event.target.checked); });
 
 function EditorComponent(container, state) {
   editor = ace.edit(container.getElement()[0]);
@@ -86,6 +87,10 @@ class WorkerAPI {
     const remotePort = channel.port2;
     this.worker.postMessage({id: 'constructor', data: remotePort},
                             [remotePort]);
+  }
+
+  setShowTiming(value) {
+    this.port.postMessage({id: 'setShowTiming', data: value});
   }
 
   terminate() {

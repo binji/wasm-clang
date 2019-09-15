@@ -2,6 +2,10 @@ function sleep(ms) {
   return new Promise((resolve, _) => setTimeout(resolve, ms));
 }
 
+function msToSec(start, end) {
+  return ((end - start) / 1000).toFixed(2);
+}
+
 function debounceLazy(f, ms) {
   let waiting = 0;
   let running = false;
@@ -605,6 +609,7 @@ class API {
     this.clangFilename = options.clang || 'clang';
     this.lldFilename = options.lld || 'lld';
     this.sysrootFilename = options.sysroot || 'sysroot.tar';
+    this.showTiming = options.showTiming || false;
 
     this.clangCommonArgs = [
       '-disable-free',
@@ -632,9 +637,17 @@ class API {
   }
 
   async hostLogAsync(message, promise) {
+    const start = +new Date();
     this.hostLog(`${message}...`);
     const result = await promise;
-    this.hostWrite(' done.\n');
+    const end = +new Date();
+    this.hostWrite(' done.');
+    if (this.showTiming) {
+      const green = '\x1b[92m';
+      const normal = '\x1b[0m';
+      this.hostWrite(`${green}(${msToSec(start, end)}s)${normal}\n`);
+    }
+    this.hostWrite('\n');
     return result;
   }
 
@@ -701,9 +714,20 @@ class API {
   }
 
   async run(module, ...args) {
-    this.hostLog(`${args.join(' ')}\n`);
+    this.hostLog(`${args.join(' ')}`);
+    const start = +new Date();
     const app = new App(module, this.memfs, ...args);
+    const instantiate = +new Date();
     const stillRunning = await app.run();
+    const end = +new Date();
+    if (this.showTiming) {
+      const green = '\x1b[92m';
+      const normal = '\x1b[0m';
+      let msg = ` ${green}(${msToSec(start, instantiate)}s`;
+      msg += `/${msToSec(instantiate, end)}s)${normal}`;
+      this.hostWrite(msg);
+    }
+    this.hostWrite('\n');
     return stillRunning ? app : null;
   }
 
