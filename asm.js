@@ -11,8 +11,13 @@ let asmEditor = null;
 function AsmEditorComponent(container, state) {
   asmEditor = ace.edit(container.getElement()[0]);
   asmEditor.session.setMode('ace/mode/assembly_x86');
-  asmEditor.setOption('fontSize', 20);
+  asmEditor.setOption('fontSize', `${state.fontSize || 18}px`);
   asmEditor.setReadOnly(true);
+
+  container.on('fontSizeChanged', fontSize => {
+    container.extendState({fontSize});
+    asmEditor.setFontSize(`${fontSize}px`);
+  });
   container.on('resize', debounceLazy(event => asmEditor.resize(), 20));
   container.on('destroy', event => {
     if (asmEditor) {
@@ -36,40 +41,32 @@ function initLayout() {
       content: [{
         type: 'component',
         componentName: 'editor',
-        componentState: {value: initialProgram},
+        componentState: {fontSize: 18, value: initialProgram},
       }, {
         type: 'column',
         content: [{
           type: 'component',
           componentName: 'terminal',
+          componentState: {fontSize: 18},
         }, {
           type: 'component',
           componentName: 'asmEditor',
+          componentState: {fontSize: 18},
         }]
       }]
     }]
   };
 
-  let layoutConfig = localStorage.getItem(LAYOUT_CONFIG_KEY);
-  if (layoutConfig) {
-    layoutConfig = JSON.parse(layoutConfig);
-  } else {
-    layoutConfig = defaultLayoutConfig;
-  }
-  layout = new GoldenLayout(layoutConfig, $('#layout'));
+  layout = new Layout({
+    configKey: LAYOUT_CONFIG_KEY,
+    defaultLayoutConfig,
+  });
 
   layout.on('initialised', event => {
     editor.session.on('change', compile);
     compile();
   });
 
-  layout.on('stateChanged', debounceLazy(() => {
-    const state = JSON.stringify(layout.toConfig());
-    localStorage.setItem(LAYOUT_CONFIG_KEY, state);
-  }, 500));
-
-  layout.registerComponent('editor', EditorComponent);
-  layout.registerComponent('terminal', TerminalComponent);
   layout.registerComponent('asmEditor', AsmEditorComponent);
   layout.init();
 }

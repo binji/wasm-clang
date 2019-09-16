@@ -39,12 +39,13 @@ function initLayout() {
       content: [{
         type: 'component',
         componentName: 'editor',
-        componentState: {value: initialProgram},
+        componentState: {fontSize: 18, value: initialProgram},
       }, {
         type: 'stack',
         content: [{
           type: 'component',
           componentName: 'terminal',
+          componentState: {fontSize: 18},
         }, {
           type: 'component',
           componentName: 'canvas',
@@ -53,13 +54,10 @@ function initLayout() {
     }]
   };
 
-  let layoutConfig = localStorage.getItem('layoutConfig');
-  if (layoutConfig) {
-    layoutConfig = JSON.parse(layoutConfig);
-  } else {
-    layoutConfig = defaultLayoutConfig;
-  }
-  layout = new GoldenLayout(layoutConfig, $('#layout'));
+  layout = new Layout({
+    configKey: LAYOUT_CONFIG_KEY,
+    defaultLayoutConfig,
+  });
 
   layout.on('initialised', event => {
     // Editor stuff
@@ -70,13 +68,6 @@ function initLayout() {
     });
   });
 
-  layout.on('stateChanged', debounceLazy(() => {
-    const state = JSON.stringify(layout.toConfig());
-    localStorage.setItem('layoutConfig', state);
-  }, 500));
-
-  layout.registerComponent('editor', EditorComponent);
-  layout.registerComponent('terminal', TerminalComponent);
   layout.registerComponent('canvas', CanvasComponent);
   layout.init();
 }
