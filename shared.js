@@ -311,9 +311,11 @@ class App {
       let writeStack = true;
       if (exn instanceof ProcExit) {
         if (exn.code === RAF_PROC_EXIT_CODE) {
+          console.log('Allowing rAF after exit.');
           return true;
         }
         // Don't allow rAF unless you return the right code.
+        console.log(`Disallowing rAF since exit code is ${exn.code}.`);
         this.allowRequestAnimationFrame = false;
         if (exn.code == 0) {
           return false;
@@ -332,10 +334,6 @@ class App {
       // Propagate error.
       throw exn;
     }
-  }
-
-  frameLoop(timeMs) {
-    this.exports.frame_loop(timeMs);
   }
 
   proc_exit(code) {
@@ -415,7 +413,11 @@ class App {
   canvas_setHeight(height) { if (canvas) canvas.height = height; }
   canvas_requestAnimationFrame() {
     if (this.allowRequestAnimationFrame) {
-      requestAnimationFrame(this.frameLoop.bind(this));
+      requestAnimationFrame(ms => {
+        if (this.allowRequestAnimationFrame) {
+          this.exports.canvas_loop(ms);
+        }
+      });
     }
   }
 

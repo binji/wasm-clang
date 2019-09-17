@@ -6,8 +6,6 @@
 #include <string.h>
 #include <string_view>
 
-const int RAF_PROC_EXIT_CODE = 0xC0C0A;
-
 typedef double f64;
 typedef uint32_t Handle;
 
