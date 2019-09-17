@@ -11,6 +11,23 @@ const run = debounceLazy(editor => api.compileLinkRun(editor.getValue()), 100);
 const setKeyboard = name => editor.setKeyboardHandler(`ace/keyboard/${name}`);
 
 // Toolbar stuff
+$('#open').on('click', event => $('#openInput').click());
+$('#openInput').on('change', async event => {
+  const file = event.target.files[0];
+  event.target.value = null; // Clear so same file can be loaded multiple times.
+
+  function readFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = event => reject(event.error);
+      reader.onloadend = event => resolve(event.target.result);
+      reader.readAsText(file);
+    });
+  }
+
+  editor.setValue(await readFile(file));
+  editor.clearSelection();
+});
 $('#keyboard').on('input', event => setKeyboard(event.target.value));
 $('#showTiming').on('click', event => { api.setShowTiming(event.target.checked); });
 
