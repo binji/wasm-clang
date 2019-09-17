@@ -645,7 +645,7 @@ class API {
     if (this.showTiming) {
       const green = '\x1b[92m';
       const normal = '\x1b[0m';
-      this.hostWrite(`${green}(${msToSec(start, end)}s)${normal}\n`);
+      this.hostWrite(` ${green}(${msToSec(start, end)}s)${normal}\n`);
     }
     this.hostWrite('\n');
     return result;
@@ -715,20 +715,20 @@ class API {
   }
 
   async run(module, ...args) {
-    this.hostLog(`${args.join(' ')}`);
+    this.hostLog(`${args.join(' ')}\n`);
     const start = +new Date();
     const app = new App(module, this.memfs, ...args);
     const instantiate = +new Date();
     const stillRunning = await app.run();
     const end = +new Date();
+    this.hostWrite('\n');
     if (this.showTiming) {
       const green = '\x1b[92m';
       const normal = '\x1b[0m';
-      let msg = ` ${green}(${msToSec(start, instantiate)}s`;
-      msg += `/${msToSec(instantiate, end)}s)${normal}`;
+      let msg = `${green}(${msToSec(start, instantiate)}s`;
+      msg += `/${msToSec(instantiate, end)}s)${normal}\n`;
       this.hostWrite(msg);
     }
-    this.hostWrite('\n');
     return stillRunning ? app : null;
   }
 
