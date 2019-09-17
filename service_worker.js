@@ -3,13 +3,13 @@
 // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle
 // https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers
 
-const expectedCaches = ['v2'];
+const expectedCaches = ['v3'];
 
 const cdn = 'https://cdnjs.cloudflare.com/ajax/libs';
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open('v2').then(cache => {
+    caches.open('v3').then(cache => {
       return cache.addAll([
         `${cdn}/ace/1.4.5/ace.js`,
         `${cdn}/ace/1.4.5/keybinding-emacs.js`,
