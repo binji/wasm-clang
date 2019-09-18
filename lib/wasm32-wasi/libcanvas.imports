@@ -11,6 +11,7 @@ canvas_ellipse
 canvas_fill
 canvas_fillRect
 canvas_fillText
+canvas_finishSetup
 canvas_imageDataSetData
 canvas_lineTo
 canvas_measureText

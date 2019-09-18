@@ -45,6 +45,7 @@ enum TextBaseline {
 
 extern "C" {
 
+void canvas_finishSetup();
 void canvas_requestAnimationFrame();
 void canvas_destroyHandle(Handle);
 

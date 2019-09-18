@@ -8,10 +8,9 @@ void loop(double timeSec, double elapsedSec);
 
 // TODO: move this into a library.
 int main() {
-  const int RAF_PROC_EXIT_CODE = 0xC0C0A;
   setup();
   canvas_requestAnimationFrame();
-  return RAF_PROC_EXIT_CODE;
+  canvas_finishSetup();
 }
 
 #define WASM_EXPORT __attribute__((__visibility__("default")))
