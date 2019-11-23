@@ -46,7 +46,20 @@ const onAnyMessage = async event => {
     try {
       output = await api.compileToAssembly(event.data.data);
     } finally {
-      port.postMessage({id : 'compileToAssembly', responseId, data : output},
+      port.postMessage({id : 'runAsync', responseId, data : output},
+                       transferList);
+    }
+    break;
+  }
+
+  case 'compileTo6502': {
+    const responseId = event.data.responseId;
+    let output = null;
+    let transferList;
+    try {
+      output = await api.compileTo6502(event.data.data);
+    } finally {
+      port.postMessage({id : 'runAsync', responseId, data : output},
                        transferList);
     }
     break;

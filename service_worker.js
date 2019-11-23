@@ -3,13 +3,14 @@
 // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle
 // https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers
 
-const expectedCaches = ['v3'];
+const CACHE_NAME = 'v4';
+const expectedCaches = [CACHE_NAME];
 
 const cdn = 'https://cdnjs.cloudflare.com/ajax/libs';
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open('v3').then(cache => {
+    caches.open(CACHE_NAME).then(cache => {
       return cache.addAll([
         `${cdn}/ace/1.4.5/ace.js`,
         `${cdn}/ace/1.4.5/keybinding-emacs.js`,
@@ -25,16 +26,15 @@ self.addEventListener('install', event => {
         `${cdn}/xterm/3.14.5/xterm.min.css`,
         `${cdn}/xterm/3.14.5/xterm.min.js`,
         './',
+        './6502.html',
+        './6502.js',
         './asm.html',
         './asm.js',
-        './clang',
         './index.html',
-        './lld',
         './main.css',
         './memfs',
         './shared.js',
         './shared_web.js',
-        './sysroot.tar',
         './web.js',
         './worker.js',
       ]);
@@ -64,8 +64,25 @@ self.addEventListener('fetch', function(event) {
           return response;
         }
         console.log(`got uncached ${event.request.url}`);
-        return fetch(event.request);
-      }
+        return fetch(event.request).then(function(response) {
+          // Check if we received a valid response
+          if (!response || response.status !== 200 ||
+              response.type !== 'basic') {
+            return response;
+          }
+
+          // IMPORTANT: Clone the response. A response is a stream
+          // and because we want the browser to consume the response
+          // as well as the cache consuming the response, we need
+          // to clone it so we have two streams.
+          var responseToCache = response.clone();
+
+          caches.open(CACHE_NAME).then(function(cache) {
+            cache.put(event.request, responseToCache);
+          });
+
+          return response;
+        });
+      })
     )
-  );
 });

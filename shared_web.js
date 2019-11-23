@@ -191,17 +191,21 @@ class WorkerAPI {
     this.worker.terminate();
   }
 
-  async compileToAssembly(options) {
+  async runAsync(id, options) {
     const responseId = this.nextResponseId++;
     const responsePromise = new Promise((resolve, reject) => {
       this.responseCBs.set(responseId, {resolve, reject});
     });
-    this.port.postMessage({
-      id: 'compileToAssembly',
-      responseId,
-      data: options
-    });
+    this.port.postMessage({id, responseId, data : options});
     return await responsePromise;
+  }
+
+  async compileToAssembly(options) {
+    return this.runAsync('compileToAssembly', options);
+  }
+
+  async compileTo6502(options) {
+    return this.runAsync('compileTo6502', options);
   }
 
   compileLinkRun(contents) {
@@ -219,7 +223,7 @@ class WorkerAPI {
         term.write(event.data.data);
         break;
 
-      case 'compileToAssembly': {
+      case 'runAsync': {
         const responseId = event.data.responseId;
         const promise = this.responseCBs.get(responseId);
         if (promise) {

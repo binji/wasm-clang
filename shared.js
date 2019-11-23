@@ -702,6 +702,19 @@ class API {
     return this.memfs.getFileContents(output);
   }
 
+  async compileTo6502(options) {
+    const input = options.input;
+    const output = options.output;
+    const contents = options.contents;
+    const flags = options.flags;
+
+    await this.ready;
+    this.memfs.addFile(input, contents);
+    const vasm = await this.getModule('vasm6502_oldstyle');
+    await this.run(vasm, 'vasm6502_oldstyle', ...flags, '-o', output, input);
+    return this.memfs.getFileContents(output);
+  }
+
   async link(obj, wasm) {
     const stackSize = 1024 * 1024;
 
