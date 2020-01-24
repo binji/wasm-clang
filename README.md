@@ -15,7 +15,7 @@ Most of the JavaScript code can be found here. If you're interested in the imple
 - `main`.css
 - `memfs`: WASI implementation of in-memory filesystem,
 - `shared.js`: shared utilities for all tools (web and d8)
-- `shared\_web.js`: shared utilities for all web tools (asm.html, index.html, etc.)
+- `shared_web.js`: shared utilities for all web tools (asm.html, index.html, etc.)
 - `sysroot.tar`: C++ standard headers and libraries
 - `service_worker.js`: Service worker used by all web pages
 - `worker.js`: Dedicated work used to compile/run
@@ -24,7 +24,7 @@ Most of the JavaScript code can be found here. If you're interested in the imple
 
 - `6502.html`
 - `6502.js`
-- `vasm6502\_oldstyle`: [vasm assembler](http://sun.hasenbraten.de/vasm/) compiled to wasm w/ WASI
+- `vasm6502_oldstyle`: [vasm assembler](http://sun.hasenbraten.de/vasm/) compiled to wasm w/ WASI
 
 ## Compile C++ code to x86/wasm assembly
 
