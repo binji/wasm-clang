@@ -143,10 +143,6 @@ class Memory {
       return buf.length;
     }
   }
-
-  read(pos, size) {
-    return this.buffer.slice(pos,pos+size)
-  }
 };
 
 class MemFS {
@@ -233,23 +229,15 @@ class MemFS {
     assert(fd === 0);
     let size = 0;
     for (let i = 0; i < iovs_len; ++i) {
-      const data = this.hostMem_.read32(iovs);
+      const buf = this.hostMem_.read32(iovs);
       iovs += 4;
       const len = this.hostMem_.read32(iovs);
       iovs += 4;
-      const lenToWrite = len < (this.stdinStr.length - this.stdinStrPos) ? len : (this.stdinStr.length - this.stdinStrPos);
+      const lenToWrite = Math.min(len, (this.stdinStr.length - this.stdinStrPos));
       if(lenToWrite === 0){
         break;
       }
-      const buf = this.hostMem_.read(data,len)
-      // copy the original data out
-      const strToWrite = this.stdinStr.substr(0,lenToWrite).split('').map(x => x.charCodeAt(0));
-      // generate the substr to write
-      const subBuf = new Uint8Array(buf,0,lenToWrite)
-      subBuf.set(strToWrite)
-      // write the substr to buf
-      this.hostMem_.write(data,buf)
-      // write buf back
+      this.hostMem_.write(buf, this.stdinStr.substr(this.stdinStrPos, lenToWrite));
       size += lenToWrite;
       this.stdinStrPos += lenToWrite;
       if(lenToWrite !== len){
