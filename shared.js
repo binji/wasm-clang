@@ -143,19 +143,25 @@ class Memory {
       return buf.length;
     }
   }
+
+  read(pos, size) {
+    return this.buffer.slice(pos,pos+size)
+  }
 };
 
 class MemFS {
   constructor(options) {
     const compileStreaming = options.compileStreaming;
     this.hostWrite = options.hostWrite;
+    this.stdinStr = options.stdinStr || "";
+    this.stdinStrPos = 0;
     this.memfsFilename = options.memfsFilename;
 
     this.hostMem_ = null;  // Set later when wired up to application.
 
     // Imports for memfs module.
     const env = getImportObject(
-        this, [ 'abort', 'host_write', 'memfs_log', 'copy_in', 'copy_out' ]);
+        this, [ 'abort', 'host_write', 'host_read', 'memfs_log', 'copy_in', 'copy_out' ]);
 
     this.ready = compileStreaming(this.memfsFilename)
                      .then(module => WebAssembly.instantiate(module, {env}))
@@ -169,6 +175,11 @@ class MemFS {
 
   set hostMem(mem) {
     this.hostMem_ = mem;
+  }
+
+  setStdinStr(str) {
+    this.stdinStr = str;
+    this.stdinStrPos = 0;
   }
 
   addDirectory(path) {
@@ -214,6 +225,40 @@ class MemFS {
     }
     this.hostMem_.write32(nwritten_out, size);
     this.hostWrite(str);
+    return ESUCCESS;
+  }
+
+  host_read(fd, iovs, iovs_len, nread) {
+    this.hostMem_.check();
+    assert(fd === 0);
+    let size = 0;
+    for (let i = 0; i < iovs_len; ++i) {
+      const data = this.hostMem_.read32(iovs);
+      iovs += 4;
+      const len = this.hostMem_.read32(iovs);
+      iovs += 4;
+      const lenToWrite = len < (this.stdinStr.length - this.stdinStrPos) ? len : (this.stdinStr.length - this.stdinStrPos);
+      if(lenToWrite === 0){
+        break;
+      }
+      const buf = this.hostMem_.read(data,len)
+      // copy the original data out
+      const strToWrite = this.stdinStr.substr(0,lenToWrite).split('').map(x => x.charCodeAt(0));
+      // generate the substr to write
+      const subBuf = new Uint8Array(buf,0,lenToWrite)
+      subBuf.set(strToWrite)
+      // write the substr to buf
+      this.hostMem_.write(data,buf)
+      // write buf back
+      size += lenToWrite;
+      this.stdinStrPos += lenToWrite;
+      if(lenToWrite !== len){
+        break;
+      }
+    }
+    // For logging
+    // this.hostWrite("Read "+ size + "bytes, pos: "+ this.stdinStrPos + "\n");
+    this.hostMem_.write32(nread, size);
     return ESUCCESS;
   }
 
