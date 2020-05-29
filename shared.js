@@ -149,13 +149,15 @@ class MemFS {
   constructor(options) {
     const compileStreaming = options.compileStreaming;
     this.hostWrite = options.hostWrite;
+    this.stdinStr = options.stdinStr || "";
+    this.stdinStrPos = 0;
     this.memfsFilename = options.memfsFilename;
 
     this.hostMem_ = null;  // Set later when wired up to application.
 
     // Imports for memfs module.
     const env = getImportObject(
-        this, [ 'abort', 'host_write', 'memfs_log', 'copy_in', 'copy_out' ]);
+        this, [ 'abort', 'host_write', 'host_read', 'memfs_log', 'copy_in', 'copy_out' ]);
 
     this.ready = compileStreaming(this.memfsFilename)
                      .then(module => WebAssembly.instantiate(module, {env}))
@@ -169,6 +171,11 @@ class MemFS {
 
   set hostMem(mem) {
     this.hostMem_ = mem;
+  }
+
+  setStdinStr(str) {
+    this.stdinStr = str;
+    this.stdinStrPos = 0;
   }
 
   addDirectory(path) {
@@ -214,6 +221,32 @@ class MemFS {
     }
     this.hostMem_.write32(nwritten_out, size);
     this.hostWrite(str);
+    return ESUCCESS;
+  }
+
+  host_read(fd, iovs, iovs_len, nread) {
+    this.hostMem_.check();
+    assert(fd === 0);
+    let size = 0;
+    for (let i = 0; i < iovs_len; ++i) {
+      const buf = this.hostMem_.read32(iovs);
+      iovs += 4;
+      const len = this.hostMem_.read32(iovs);
+      iovs += 4;
+      const lenToWrite = Math.min(len, (this.stdinStr.length - this.stdinStrPos));
+      if(lenToWrite === 0){
+        break;
+      }
+      this.hostMem_.write(buf, this.stdinStr.substr(this.stdinStrPos, lenToWrite));
+      size += lenToWrite;
+      this.stdinStrPos += lenToWrite;
+      if(lenToWrite !== len){
+        break;
+      }
+    }
+    // For logging
+    // this.hostWrite("Read "+ size + "bytes, pos: "+ this.stdinStrPos + "\n");
+    this.hostMem_.write32(nread, size);
     return ESUCCESS;
   }
 
