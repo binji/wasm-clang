@@ -1,6 +1,6 @@
 # Clang/LLD in WebAssembly
 
-This is the demo for my CppCon 2019 talk! I'll update with a link to the video when it is live.
+This is the demo for my CppCon 2019 talk! You can view the talk on [youtube](https://www.youtube.com/watch?v=5N4b-rU-OAA)
 
 Thing should work, but it's still very much alpha demoware. Go to https://binji.github.io/wasm-clang to see it in action.
 
