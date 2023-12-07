@@ -6,6 +6,8 @@ Thing should work, but it's still very much alpha demoware. Go to https://binji.
 
 Most of the JavaScript code can be found here. If you're interested in the implementation of the in-memory filesystem, take a look at https://github.com/binji/llvm-project/tree/master/binji.
 
+Some notes on how I built this, sorry that they are relatively sparse: https://gist.github.com/binji/b7541f9740c21d7c6dac95cbc9ea6fca
+
 # Directory structure
 
 ## Shared utilities
